@@ -1,0 +1,12 @@
+import fs from 'node:fs/promises';
+const root = new URL('../', import.meta.url);
+const read = p => fs.readFile(new URL(p,root),'utf8');
+const [worker,html] = await Promise.all([read('worker.js'),read('web.html')]);
+const marker = 'const PAGE = __IIR_HTML__;';
+if (!worker.includes(marker)) throw new Error('HTML injection marker missing');
+if (!html.includes('2026-11-09') || !html.includes('/api/candidates')) throw new Error('Historical safety markers missing');
+const built = worker.replace(marker, ()=>'const PAGE = '+JSON.stringify(html)+';');
+const out = new URL('./dist/',root);
+await fs.mkdir(out,{recursive:true});
+await fs.writeFile(new URL('./dist/worker.mjs',root),built);
+console.log('IIR Worker built: '+built.length+' characters');
