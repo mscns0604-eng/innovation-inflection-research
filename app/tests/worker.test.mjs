@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import worker, {scoreRange,parseForm4} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
@@ -48,4 +49,13 @@ test('initial page says historical, not current quote',async()=>{
  assert.match(t,/2026-11-09/);
  assert.match(t,/과거 조사자료/);
  assert.match(t,/api\/candidates/);
+});
+
+test('dashboard inline JavaScript is syntactically valid and unique', () => {
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ const scripts=Array.from(html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi));
+ assert.equal(scripts.length,1,'unexpected duplicated scripts');
+ assert.doesNotThrow(()=>new Function(scripts[0][1]));
+ assert.equal((html.match(/async function load\(\)/g)||[]).length,1,'duplicate load handlers');
+ assert.match(scripts[0][1],/fetchBounded/);
 });
