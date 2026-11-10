@@ -13,7 +13,7 @@ const MAX_REQUESTS = 18;
 const MAX_RUN_MS = 39000;
 const SEC_TIMEOUT_MS = 4800;
 const SOURCE_ROOT = 'https://www.sec.gov';
-const ALLOW_SORT = {priority:"CASE c.research_status WHEN 'RESEARCH_PRIORITY' THEN 0 WHEN 'CONDITIONAL' THEN 1 WHEN 'WATCH' THEN 2 ELSE 3 END, c.trade_last_date DESC",ticker:"c.ticker ASC",amount:"c.buy_amount_usd DESC",recent:"c.trade_last_date DESC"};
+const ALLOW_SORT = {priority:"COALESCE(s.review_rank,101) ASC, CASE COALESCE(s.research_status,c.research_status) WHEN 'RESEARCH_PRIORITY' THEN 0 WHEN 'CONDITIONAL' THEN 1 WHEN 'WATCH' THEN 2 ELSE 3 END, c.trade_last_date DESC",ticker:"c.ticker ASC",amount:"c.buy_amount_usd DESC",recent:"c.trade_last_date DESC"};
 const JSON_HEADERS = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin'};
 const iso = () => new Date().toISOString();
 function json(data,code=200){return new Response(JSON.stringify(data),{status:code,headers:JSON_HEADERS})}
@@ -55,7 +55,7 @@ async function listCandidates(db,url){
  const args=mode==='ALL_ELIGIBLE'?[]:[mode];
  const common=' FROM companies c LEFT JOIN score_snapshots s ON s.id=(SELECT s2.id FROM score_snapshots s2 WHERE s2.company_ticker=c.ticker ORDER BY s2.asof_utc DESC,s2.id DESC LIMIT 1) WHERE '+where;
  const count=await db.prepare('SELECT COUNT(*) n'+common).bind(...args).first();
- const fields='c.*,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure';
+ const fields='c.*,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,s.review_rank,s.research_status AS reviewed_research_status,s.entry_risk_status,s.reason_summary AS current_reason_summary,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure';
  // c.theme is a theme description; read the optional score as theme_score.
  const rows=await db.prepare('SELECT '+fields+common+' ORDER BY '+ALLOW_SORT[sort]+' LIMIT ? OFFSET ?').bind(...args,rawLimit,(rawPage-1)*rawLimit).all();
  return json({items:(rows.results||[]).map(displayRow),total:count?.n||0,page:rawPage,limit:rawLimit});
