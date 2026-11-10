@@ -28,7 +28,7 @@ export function scoreRange(row){
  return {confirmed_score:knownMax?confirmed:null,possible_score:knownMax?confirmed+(100-knownMax):null,coverage_pct:knownMax};
 }
 function displayRow(r){
- const range=scoreRange(r);
+ const range=scoreRange({...r,theme:r.theme_score});
  return {...r,...range,score_version:RUBRIC_VERSION};
 }
 function validTicker(s){return typeof s==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(s)}
@@ -58,7 +58,7 @@ async function listCandidates(db,url){
  const fields='c.*,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc';
  // c.theme is a theme description; read the optional score as theme_score.
  const rows=await db.prepare('SELECT '+fields+common+' ORDER BY '+ALLOW_SORT[sort]+' LIMIT ? OFFSET ?').bind(...args,rawLimit,(rawPage-1)*rawLimit).all();
- return json({items:(rows.results||[]).map(r=>displayRow({...r,theme:r.theme_score})).map(r=>({...r,theme:r.theme_score==null?r.theme:r.theme_text||r.theme})),total:count?.n||0,page:rawPage,limit:rawLimit});
+ return json({items:(rows.results||[]).map(displayRow),total:count?.n||0,page:rawPage,limit:rawLimit});
 }
 async function candidateDetail(db,ticker){
  if(!validTicker(ticker))return json({error:'INVALID_TICKER'},400);
