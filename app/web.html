@@ -40,15 +40,47 @@ function render(){var list=filtered();el('count-label').textContent='총 '+list.
 function renderStats(){el('kpi-count').textContent=data.length;el('kpi-cluster').textContent=data.filter(function(c){return ['CLUSTER','STRONG_CLUSTER'].includes(c.signal_type)}).length;el('kpi-priority').textContent=data.filter(function(c){return c.research_status==='RESEARCH_PRIORITY'}).length;el('kpi-risk').textContent=data.filter(function(c){return ['ON_HOLD','CONDITIONAL'].includes(c.research_status)}).length}
 function openDetail(t){var c=data.find(function(x){return x.ticker===t});if(!c)return;el('detail-body').innerHTML='<div class="eyebrow">EQUITY / RESEARCH SNAPSHOT</div><h2 id="detail-title">'+esc(c.ticker)+'</h2><div class="subtitle">'+esc(c.name)+' · '+esc(c.industry)+'</div><span class="symbol unknown">2026-11-09 과거 조사 / 매수 사실 검증 필요</span><div class="block"><h3>기술 / 변곡점</h3><p>'+esc(c.summary||c.theme||'자료 미확인')+'</p><p><strong>핵심 확인:</strong> '+esc(c.focus||'후속 연구 필요')+'</p></div><div class="block"><h3>당시 매수 신호와 평가</h3><div class="facts"><div class="fact"><label>신호 분류 (미검증)</label><strong>'+esc(label(c.signal_type))+'</strong></div><div class="fact"><label>참여 신고자</label><strong>'+esc(c.buyers_count==null?'미확인':c.buyers_count+'명')+'</strong></div><div class="fact"><label>당시 집계 매수액</label><strong>'+esc(money(c.buy_amount_usd))+'</strong></div><div class="fact"><label>가설적 100점 평가</label><strong>'+esc(c.confirmed_score==null?'미평가':c.confirmed_score+'~'+c.possible_score)+'</strong></div><div class="fact"><label>2026-11-09 종가</label><strong>'+(c.seed_price_usd==null?'미확인':'$'+Number(c.seed_price_usd).toFixed(2))+'</strong></div><div class="fact"><label>판단 상태</label><strong>'+esc(label(c.research_status))+'</strong></div></div></div><div class="block chart-block"><h3>주가 추이 · OHLC 막대</h3><p class="chart-caption">기간 선택은 차트 하단(1M · 3M · 6M · 1Y · 5Y 등)을 사용하세요. 각 구간은 TradingView가 제공하는 해당 거래소 가격/캔들 원자료로 표시합니다. 자체 평균값·추정값은 생성하지 않습니다.</p><div id="tv-chart" class="market-chart" aria-label="종목별 주가 변동 차트"><div class="chart-loading">가격 차트 연결 중…</div></div><p class="chart-caption">차트 제공: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> · 미국 거래소 시간 기준 · 실시간/지연 여부, 거래정지, 주식분할 및 배당 처리 기준은 제공사 확인. 위의 11/9 종가는 별도 과거 조사값입니다.</p></div><div class="block"><h3>주의할 위험 / 반증 근거</h3><p style="color:#f3bda0">'+esc(c.risk_note||'개별 위험 검증 대기')+'</p><p class="muted">기술 이벤트 일정, 현재 시세, 현금소진, SEC 주석은 아직 최신 검증되지 않았습니다.</p></div><div class="links"><a class="linkbtn" target="_blank" rel="noopener noreferrer" href="https://github.com/mscns0604-eng/innovation-inflection-research/blob/main/research/2026-11-09_screen.md">GitHub 연구 기록 ↗</a><a class="linkbtn" target="_blank" rel="noopener noreferrer" href="https://www.sec.gov/edgar/search/">SEC EDGAR 직접 확인 ↗</a></div><div class="block" id="sec-filing-list"><h3>최근 SEC 수집 공시</h3><p class="muted">수집 이력 조회 중…</p></div><div class="about">자료구분: historical_seed · 검증상태: UNVERIFIED<br>평가기준: IIR RUBRIC v0.2.0 · 과거 가격을 현재 시세로 사용하지 마세요.</div>';el('cover').classList.add('open');el('cover').setAttribute('aria-hidden','false');el('close').focus();loadSecFilings(t);mountTradingView(t)}
 function loadSecFilings(t){
- fetch('/api/candidates/'+encodeURIComponent(t),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('fetch failed');return r.json()}).then(function(d){
+ fetch('/api/candidates/'+encodeURIComponent(t),{cache:'no-store'}).then(function(r){
+  if(!r.ok)throw new Error('SEC detail HTTP '+r.status);
+  return r.json();
+ }).then(function(d){
   if(!el('detail-title')||el('detail-title').textContent!==t)return;
-  var box=el('sec-filing-list');if(!box)return;var fs=Array.isArray(d.filings)?d.filings:[];
-  if(!fs.length){box.innerHTML='<h3>확보된 SEC 원문</h3><p class="muted">현재 저장된 원문이 없습니다. 기존 매수 집계는 아직 검증되지 않았습니다.</p>';return}
-  box.innerHTML='<h3>등록된 SEC Form 4 관련 자료 ('+fs.length+'건)</h3><p class="muted">수동 확인 자료이며 일부는 보조집계 대조 단계입니다. 정확한 공시시각·10b5-1·매수유형은 건별 추가 검증이 필요합니다.</p>'+fs.slice(0,12).map(function(f){
-   var link='';try{var u=new URL(f.source_url);if(u.protocol==='https:'&&u.hostname==='www.sec.gov')link=u.href}catch(e){}
-   return '<p><strong>'+esc(f.filing_type)+'</strong> · 공개 '+esc(date(f.accepted_at_utc))+' · '+esc(f.parse_status==='MANUAL_P_CONFIRMED_PLAN_REVIEW_PENDING'?'P 거래 원문 확인 / 추가검증 필요':f.parse_status==='SECONDARY_P_REVIEW_REQUIRED'?'집계자료 대조 / SEC 원문 재확인 필요':f.parse_status==='MANUAL_P_CONFIRMED_PURCHASE_CONTEXT_UNVERIFIED'?'P 확인 / 매수 성격 검토 필요':f.parse_status)+
-    (link?' <a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">SEC 원문 ↗</a>':'')+'</p>'
-  }).join('');var trs=Array.isArray(d.insider_trades)?d.insider_trades:[];if(trs.length)box.innerHTML+='<h3>원문에 기록된 매수 거래</h3>'+trs.slice(0,30).map(function(x){return '<p><strong>'+esc(x.reporting_owner_name||'신고자 미확인')+'</strong> · '+esc(date(x.trade_date))+' · '+esc(Number(x.shares).toLocaleString('en-US'))+'주 × if(box)box.innerHTML='<h3>최근 SEC 수집 공시</h3><p class="muted">상세 공시 정보를 불러오지 못했습니다.</p>'})
+  var box=el('sec-filing-list');if(!box)return;
+  var fs=Array.isArray(d.filings)?d.filings:[];
+  if(!fs.length){
+   box.innerHTML='<h3>SEC 관련 등록 자료</h3><p class="muted">현재 저장된 공시 자료가 없습니다. 기존 매수 집계는 미검증입니다.</p>';
+   return;
+  }
+  var markup='<h3>SEC Form 4 관련 자료 ('+fs.length+'건)</h3><p class="muted">수동 기록이며 일부는 보조자료 대조 단계입니다. 공개 시각·10b5-1·거래 성격은 별도 확인이 필요합니다.</p>';
+  fs.slice(0,12).forEach(function(f){
+   var link='';
+   try{
+    var u=new URL(f.source_url);
+    if(u.protocol==='https:'&&u.hostname==='www.sec.gov')link=u.href;
+   }catch(e){}
+   var state=f.parse_status==='SECONDARY_P_REVIEW_REQUIRED'?'보조자료 확인 · SEC 원문 추가 검증 필요':
+     f.parse_status==='MANUAL_P_CONFIRMED_PURCHASE_CONTEXT_UNVERIFIED'?'P 확인 · 취득 성격 미확인':
+     f.parse_status==='MANUAL_P_CONFIRMED_PLAN_REVIEW_PENDING'?'P 거래 확인 · 계획매매 미확인':f.parse_status;
+   markup+='<p><strong>'+esc(f.filing_type)+'</strong> · 접수 '+esc(date(f.accepted_at_utc))+' · '+esc(state)+
+    (link?' <a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">SEC 관련 자료</a>':'')+'</p>';
+  });
+  var trades=Array.isArray(d.insider_trades)?d.insider_trades:[];
+  if(trades.length){
+   markup+='<h3>등록된 내부자 매수 거래</h3>';
+   trades.slice(0,30).forEach(function(x){
+    var state=x.verification_status==='SECONDARY_P_UNVERIFIED'?'보조자료 확인 · 원문 재검증 전':
+      x.verification_status==='P_CONFIRMED_CONTEXT_UNCHECKED'?'P 확인 · 취득 성격 검토 전':
+      x.verification_status==='P_CONFIRMED_PLAN_UNCHECKED'?'P 확인 · 계획매매 검토 전':x.verification_status;
+    markup+='<p><strong>'+esc(x.reporting_owner_name||'신고자 미확인')+'</strong> · '+esc(date(x.trade_date))+
+      ' · '+esc(Number(x.shares).toLocaleString('en-US'))+'주 × $'+esc(Number(x.price_usd).toFixed(4))+
+      ' = <strong>'+esc(money(x.value_usd))+'</strong> · '+esc(state)+'</p>';
+   });
+  }
+  box.innerHTML=markup;
+ }).catch(function(){
+  var box=el('sec-filing-list');
+  if(box)box.innerHTML='<h3>SEC 관련 등록 자료</h3><p class="muted">상세 자료를 불러오지 못했습니다.</p>';
+ });
 }
 function mountTradingView(t){
  var map={APTV:'NYSE:APTV',ADTN:'NASDAQ:ADTN',SOPH:'NASDAQ:SOPH',GFS:'NASDAQ:GFS',ANIX:'NASDAQ:ANIX',ENPH:'NASDAQ:ENPH',XRAY:'NASDAQ:XRAY',AMRC:'NYSE:AMRC',PRCT:'NASDAQ:PRCT',IMSR:'NASDAQ:IMSR'};
@@ -70,33 +102,8 @@ el('rows').addEventListener('click',function(e){var b=e.target.closest('[data-st
 el('filters').addEventListener('click',function(e){var b=e.target.closest('button[data-filter]');if(!b)return;selected=b.getAttribute('data-filter');el('filters').querySelectorAll('button').forEach(function(x){x.classList.toggle('active',x===b)});render()});
 el('search').addEventListener('input',render);el('bio').addEventListener('change',function(){persist();render()});el('sort').addEventListener('change',function(){persist();render()});document.querySelectorAll('th[data-sort]').forEach(function(x){x.addEventListener('click',function(){el('sort').value=x.getAttribute('data-sort');persist();render()})});
 function showStatus(s){status=s;var sec=s&&s.sec||{},text='과거 스냅샷';if(sec.state==='SUCCESS')text='SEC 일부 갱신됨';else if(sec.state==='FAILED')text='SEC 갱신 실패';else if(sec.state==='DISABLED')text='자동 수집 중지';else if(sec.state==='NOT_CONFIGURED')text='SEC 수집 미연동';el('status-caption').textContent=text;el('status-dot').style.background=sec.state==='SUCCESS'?'#5fcca3':'#f5b464';el('notice').innerHTML='<span aria-hidden="true">ⓘ</span><div><strong>과거 조사자료 / 최신 시세 아님</strong> — 10개 초기 후보는 2026-11-09 기준입니다. 내부자 신호는 SEC 주석 원문 검증 전이며 확정 매수로 간주하지 않습니다. <br>SEC 자동수집: '+esc(text)+(sec.last_error?' · '+esc(sec.last_error):'')+'. 주가 추이는 종목별 TradingView 차트에서 별도로 확인할 수 있습니다.</div>';var dateText=sec.last_success_at?new Date(sec.last_success_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):'없음';el('last-update').textContent='SEC 마지막 성공: '+dateText+' (KST) · 과거 스냅샷: 2026-11-09'}
-async function load(){try{var res=await Promise.all([fetch('/api/candidates?limit=100',{cache:'no-store'}),fetch('/api/status',{cache:'no-store'})]);if(!res[0].ok||!res[1].ok)throw new Error('API HTTP 오류');var a=await res[0].json(),b=await res[1].json();if(!a.items||!Array.isArray(a.items))throw new Error('후보 데이터 형식 오류');data=a.items;showStatus(b);renderStats();render()}catch(e){el('notice').innerHTML='<span aria-hidden="true">!</span><div><strong>API 연결 오류</strong> — '+esc(e.message)+'. 마지막 정상 데이터가 없는 경우 화면에 임의 데이터를 표시하지 않습니다.</div>';el('status-caption').textContent='연결 오류';el('rows').innerHTML='<tr><td colspan="10" class="empty">데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</td></tr>'}}load();
-})();
-</script>
-</body></html>+esc(Number(x.price_usd).toFixed(4))+' = <strong>'+esc(money(x.value_usd))+'</strong> · '+esc(x.code)+' · '+esc(x.verification_status==='P_CONFIRMED_PLAN_UNCHECKED'?'P 확인 / 계획매매 검토 전':x.verification_status==='P_CONFIRMED_CONTEXT_UNCHECKED'?'P 확인 / 거래성격 검토 전':x.verification_status==='SECONDARY_P_UNVERIFIED'?'보조자료 확인 / 원문 검증 전':x.verification_status)+'</p>'}).join('');
- }).catch(function(){var box=el('sec-filing-list');if(box)box.innerHTML='<h3>최근 SEC 수집 공시</h3><p class="muted">상세 공시 정보를 불러오지 못했습니다.</p>'})
-}
-function mountTradingView(t){
- var map={APTV:'NYSE:APTV',ADTN:'NASDAQ:ADTN',SOPH:'NASDAQ:SOPH',GFS:'NASDAQ:GFS',ANIX:'NASDAQ:ANIX',ENPH:'NASDAQ:ENPH',XRAY:'NASDAQ:XRAY',AMRC:'NYSE:AMRC',PRCT:'NASDAQ:PRCT',IMSR:'NASDAQ:IMSR'};
- var symbol=map[t],target=el('tv-chart');if(!target)return;
- if(!symbol){target.innerHTML='<div class="chart-loading">거래소 종목 연결 정보가 없어 차트가 표시되지 않습니다.</div>';return}
- target.textContent='';
- var outer=document.createElement('div');outer.className='tradingview-widget-container';outer.style.cssText='height:100%;width:100%';
- var inner=document.createElement('div');inner.className='tradingview-widget-container__widget';inner.style.cssText='height:100%;width:100%';outer.appendChild(inner);
- target.appendChild(outer);
- var script=document.createElement('script');
- script.type='text/javascript';script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';script.async=true;
- script.textContent=JSON.stringify({autosize:true,symbol:symbol,interval:'D',timezone:'exchange',theme:'dark',style:'0',locale:'kr',allow_symbol_change:false,calendar:false,save_image:false,hide_top_toolbar:false,hide_side_toolbar:true,hide_legend:false,hide_volume:true,withdateranges:true,range:'12M',support_host:'https://www.tradingview.com'});
- script.onerror=function(){if(el('detail-title')&&el('detail-title').textContent===t){target.innerHTML='<div class="chart-loading">차트 제공사 연결에 실패했습니다. <a target="_blank" rel="noopener noreferrer" href="https://www.tradingview.com/">TradingView에서 확인</a>해 주세요.</div>'}};
- outer.appendChild(script);
-}
-function closeDetail(){el('cover').classList.remove('open');el('cover').setAttribute('aria-hidden','true')}
-el('close').addEventListener('click',closeDetail);el('cover').addEventListener('click',function(e){if(e.target===el('cover'))closeDetail()});document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail()});
-el('rows').addEventListener('click',function(e){var b=e.target.closest('[data-star]');if(b){var t=b.getAttribute('data-star');if(saved.has(t))saved.delete(t);else saved.add(t);persist();render();return}var tr=e.target.closest('[data-ticker]');if(tr)openDetail(tr.getAttribute('data-ticker'))});el('rows').addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-ticker]')){e.preventDefault();openDetail(e.target.getAttribute('data-ticker'))}});
-el('filters').addEventListener('click',function(e){var b=e.target.closest('button[data-filter]');if(!b)return;selected=b.getAttribute('data-filter');el('filters').querySelectorAll('button').forEach(function(x){x.classList.toggle('active',x===b)});render()});
-el('search').addEventListener('input',render);el('bio').addEventListener('change',function(){persist();render()});el('sort').addEventListener('change',function(){persist();render()});document.querySelectorAll('th[data-sort]').forEach(function(x){x.addEventListener('click',function(){el('sort').value=x.getAttribute('data-sort');persist();render()})});
-function showStatus(s){status=s;var sec=s&&s.sec||{},text='과거 스냅샷';if(sec.state==='SUCCESS')text='SEC 일부 갱신됨';else if(sec.state==='FAILED')text='SEC 갱신 실패';else if(sec.state==='DISABLED')text='자동 수집 중지';else if(sec.state==='NOT_CONFIGURED')text='SEC 수집 미연동';el('status-caption').textContent=text;el('status-dot').style.background=sec.state==='SUCCESS'?'#5fcca3':'#f5b464';el('notice').innerHTML='<span aria-hidden="true">ⓘ</span><div><strong>과거 조사자료 / 최신 시세 아님</strong> — 10개 초기 후보는 2026-11-09 기준입니다. 내부자 신호는 SEC 주석 원문 검증 전이며 확정 매수로 간주하지 않습니다. <br>SEC 자동수집: '+esc(text)+(sec.last_error?' · '+esc(sec.last_error):'')+'. 주가 추이는 종목별 TradingView 차트에서 별도로 확인할 수 있습니다.</div>';var dateText=sec.last_success_at?new Date(sec.last_success_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):'없음';el('last-update').textContent='SEC 마지막 성공: '+dateText+' (KST) · 과거 스냅샷: 2026-11-09'}
-async function load(){try{var res=await Promise.all([fetch('/api/candidates?limit=100',{cache:'no-store'}),fetch('/api/status',{cache:'no-store'})]);if(!res[0].ok||!res[1].ok)throw new Error('API HTTP 오류');var a=await res[0].json(),b=await res[1].json();if(!a.items||!Array.isArray(a.items))throw new Error('후보 데이터 형식 오류');data=a.items;showStatus(b);renderStats();render()}catch(e){el('notice').innerHTML='<span aria-hidden="true">!</span><div><strong>API 연결 오류</strong> — '+esc(e.message)+'. 마지막 정상 데이터가 없는 경우 화면에 임의 데이터를 표시하지 않습니다.</div>';el('status-caption').textContent='연결 오류';el('rows').innerHTML='<tr><td colspan="10" class="empty">데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</td></tr>'}}load();
+async function fetchBounded(url){var c=new AbortController(),timer=setTimeout(function(){c.abort()},8000);try{return await fetch(url,{cache:'no-store',signal:c.signal})}finally{clearTimeout(timer)}}
+async function load(){try{var res=await Promise.all([fetchBounded('/api/candidates?limit=100'),fetchBounded('/api/status')]);if(!res[0].ok||!res[1].ok)throw new Error('API HTTP 오류');var a=await res[0].json(),b=await res[1].json();if(!a.items||!Array.isArray(a.items))throw new Error('후보 데이터 형식 오류');data=a.items;showStatus(b);renderStats();render()}catch(e){el('notice').innerHTML='<span aria-hidden="true">!</span><div><strong>API 연결 오류</strong> — '+esc(e.message)+'. 마지막 정상 데이터가 없는 경우 화면에 임의 데이터를 표시하지 않습니다.</div>';el('status-caption').textContent='연결 오류';el('rows').innerHTML='<tr><td colspan="10" class="empty">데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</td></tr>'}}load();
 })();
 </script>
 </body></html>
