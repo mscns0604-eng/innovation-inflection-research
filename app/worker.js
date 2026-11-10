@@ -55,7 +55,7 @@ async function listCandidates(db,url){
  const args=mode==='ALL_ELIGIBLE'?[]:[mode];
  const common=' FROM companies c LEFT JOIN score_snapshots s ON s.id=(SELECT s2.id FROM score_snapshots s2 WHERE s2.company_ticker=c.ticker ORDER BY s2.asof_utc DESC,s2.id DESC LIMIT 1) WHERE '+where;
  const count=await db.prepare('SELECT COUNT(*) n'+common).bind(...args).first();
- const fields='c.*,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc';
+ const fields='c.*,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure';
  // c.theme is a theme description; read the optional score as theme_score.
  const rows=await db.prepare('SELECT '+fields+common+' ORDER BY '+ALLOW_SORT[sort]+' LIMIT ? OFFSET ?').bind(...args,rawLimit,(rawPage-1)*rawLimit).all();
  return json({items:(rows.results||[]).map(displayRow),total:count?.n||0,page:rawPage,limit:rawLimit});
