@@ -64,13 +64,14 @@ async function candidateDetail(db,ticker){
  if(!validTicker(ticker))return json({error:'INVALID_TICKER'},400);
  const c=await db.prepare('SELECT * FROM companies WHERE ticker=?').bind(ticker).first();
  if(!c)return json({error:'NOT_FOUND'},404);
- const [filings,scores,events,signals]=await Promise.all([
+ const [filings,scores,events,signals,trades]=await Promise.all([
   db.prepare('SELECT accession_number,filing_type,accepted_at_utc,source_url,parse_status FROM filings WHERE company_ticker=? ORDER BY accepted_at_utc DESC LIMIT 25').bind(ticker).all(),
   db.prepare('SELECT * FROM score_snapshots WHERE company_ticker=? ORDER BY asof_utc DESC LIMIT 15').bind(ticker).all(),
   db.prepare('SELECT * FROM catalysts WHERE company_ticker=? ORDER BY target_start LIMIT 20').bind(ticker).all(),
-  db.prepare('SELECT signal_type,disclosed_at_utc,aggregate_buy_usd,status,source_url FROM candidate_signals WHERE company_ticker=? ORDER BY disclosed_at_utc DESC LIMIT 30').bind(ticker).all()
+  db.prepare('SELECT signal_type,disclosed_at_utc,aggregate_buy_usd,status,source_url FROM candidate_signals WHERE company_ticker=? ORDER BY disclosed_at_utc DESC LIMIT 30').bind(ticker).all(),
+  db.prepare('SELECT t.reporting_owner_name,t.trade_date,t.code,t.shares,t.price_usd,t.value_usd,t.direct_indirect,t.plan_10b5_1,t.purchase_kind,t.verification_status,f.source_url FROM insider_transactions t JOIN filings f ON f.id=t.filing_id WHERE f.company_ticker=? ORDER BY t.trade_date DESC,t.id DESC LIMIT 50').bind(ticker).all()
  ]);
- return json({company:c,filings:filings.results,scores:(scores.results||[]).map(s=>({...s,...scoreRange(s)})),catalysts:events.results,signals:signals.results,rubric_version:RUBRIC_VERSION});
+ return json({company:c,filings:filings.results,scores:(scores.results||[]).map(s=>({...s,...scoreRange(s)})),catalysts:events.results,signals:signals.results,insider_trades:trades.results||[],rubric_version:RUBRIC_VERSION});
 }
 async function getStatus(db,env){
  const s=await db.prepare('SELECT job_name,last_attempt_at_utc,last_success_at_utc,last_error,cursor,enabled,last_run_state,error_count FROM pipeline_state WHERE job_name=?').bind(JOB).first();
