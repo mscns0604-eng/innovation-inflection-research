@@ -258,7 +258,7 @@ export default {
    }
    if(url.pathname.startsWith('/api/'))return json({error:'NOT_FOUND'},404);
    if(url.pathname!=='/'&&url.pathname!=='/index.html')return json({error:'NOT_FOUND'},404);
-   return new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'strict-origin-when-cross-origin','content-security-policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"}});
+   return new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'strict-origin-when-cross-origin','content-security-policy':"default-src 'none'; script-src 'unsafe-inline' https://s3.tradingview.com; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: https://s3.tradingview.com; frame-src https://*.tradingview.com https://tradingview.com; base-uri 'none'; frame-ancestors 'none'"}});
   }catch(e){console.error(JSON.stringify({event:'api_error',path:url.pathname,error:String(e).slice(0,180)}));return json({error:'INTERNAL_ERROR',message:'데이터 요청 처리 실패'},500)}
  },
  async scheduled(event,env,ctx){
