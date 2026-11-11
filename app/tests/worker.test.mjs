@@ -70,3 +70,45 @@ test('company detail occupies the viewport and retains responsive close behavior
  assert.match(html,/lastDetailFocus/);
  assert.match(html,/id="close"[^>]*목록으로 돌아가기/);
 });
+
+test('insider buy price is share-weighted and separate from fixed close in candidate API', async () => {
+ const queries=[];
+ const db={
+  prepare(sql){
+   queries.push(sql);
+   return {bind(){
+    return {
+     first:async()=>({n:1}),
+     all:async()=>({results:[{
+      ticker:'TST',name:'Fixture',industry:'Test',theme:'Test theme',
+      seed_price_usd:9.54,seed_price_asof:'2026-11-09',
+      insider_avg_buy_price_usd:8.625,buy_trade_rows:2,
+      min_buy_price_usd:8.5,max_buy_price_usd:9.0,
+      secondary_trade_rows:0,theme_score:null
+     }]})
+    };
+   }};
+  }
+ };
+ const response=await worker.fetch(new Request('https://iir.example/api/candidates?limit=5'),{DB:db});
+ assert.equal(response.status,200);
+ const body=await response.json();
+ assert.equal(body.total,1);
+ assert.equal(body.items[0].seed_price_usd,9.54);
+ assert.equal(body.items[0].seed_price_asof,'2026-11-09');
+ assert.equal(body.items[0].insider_avg_buy_price_usd,8.625);
+ assert.equal(body.items[0].buy_trade_rows,2);
+ assert.equal(body.items[0].confirmed_score,null);
+ assert.match(queries[1],/SUM\(t\.shares\*t\.price_usd\)/);
+ assert.match(queries[1],/ROUND\(bt\.buy_cost\/bt\.buy_shares,6\)/);
+ assert.match(queries[1],/t\.code='P' AND t\.shares>0 AND t\.price_usd>0/);
+});
+
+test('price comparison columns and no fabricated live close', () => {
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.match(html,/<th[^>]*>11\/9 종가/);
+ assert.match(html,/<th[^>]*>내부자 매수단가/);
+ assert.match(html,/insiderPriceMarkup\(c\)/);
+ assert.equal((html.match(/colspan="11"/g)||[]).length,3);
+ assert.match(html,/매일 갱신되지 않는 고정값/);
+});
