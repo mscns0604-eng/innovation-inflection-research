@@ -59,3 +59,14 @@ test('dashboard inline JavaScript is syntactically valid and unique', () => {
  assert.equal((html.match(/async function load\(\)/g)||[]).length,1,'duplicate load handlers');
  assert.match(scripts[0][1],/fetchBounded/);
 });
+
+test('company detail occupies the viewport and retains responsive close behavior', () => {
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.match(html,/\.detail\{width:100%;max-width:none;height:100vh;height:100dvh/);
+ assert.match(html,/#detail-body\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(html,/@media\(max-width:950px\)\{[\s\S]*?#detail-body\{grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(html,/document\.body\.classList\.add\('detail-open'\)/);
+ assert.match(html,/document\.body\.classList\.remove\('detail-open'\)/);
+ assert.match(html,/lastDetailFocus/);
+ assert.match(html,/id="close"[^>]*목록으로 돌아가기/);
+});
