@@ -27,6 +27,16 @@ UTC `30 23 * * MON-FRI`(KST 화~토 08:30), UTC `30 11 * * MON-FRI`(KST 월~금 
 
 하나의 SEC 작업은 대상 최대 5개사, 새 공시 8건, 요청 18회, 총 39초, 요청당 4.8초, 재시도 최대 2회로 제한합니다. 401/403/429는 즉시 중지. D1 lease 120초, cursor checkpoint, accession/거래 중복키, 긴급 중지 enabled=0, 실패 시 이전 정상 데이터 보존. 원문 P 코드는 *미검증*으로만 저장하고 사적 거래, 10b5-1, 4/A 수정, 관련자 독립성은 확인 전 확정하지 않습니다.
 
+## 미국 주식 마지막 거래일 종가 (v0.2)
+
+- 2026-11-12 첫 조회 시 **2026-11-11 정규장 종가 10종목**을 Yahoo Finance v8 chart의 `interval=1d` 종가에서 확인하고 D1 `market_snapshots`에 저장. 원본 `companies.seed_price_usd`, `seed_price_asof=2026-11-09`는 절대 덮어쓰지 않음.
+- 공개 후보 API는 `latest_close_usd`, `latest_close_date`, `latest_close_source`를 반환하고, 데이터가 없을 때 과거 11/9 가격을 현 시세처럼 대체하지 않음. 상세 API의 `market_prices`에도 날짜별 저장.
+- SEC와 별도의 `market_close` 작업이 동일 Cron 일정에 따라 최대 10개 티커를 회차별로 조회. 최대 49초, 티커당 5.2초, 한 요청당 재시도 0회, 120초 DB 작업 임대, 진행 cursor 체크포인트. 실패 시 마지막 정상 가격을 **기준일과 함께** 유지. 거래시간 뉴욕 정규장 종료 30분 전에는 해당 날짜 미완료 일봉을 저장하지 않음.
+- 제공처: Yahoo Finance chart v8 공개 일봉 (비공식/문서화되지 않은 인터페이스, 서비스 정책 또는 차단에 따라 중단될 수 있음). 가격은 **실시간·시간외 시세가 아님**. 일별 스냅샷은 가격 제공자마다 주식분할 처리 등이 다를 수 있어 역사적 수익률 계산 기준이 아님. 업무 상 안정적인 사용 또는 재배포에 라이선스가 필요하면 정식 시세 API로 교체.
+- DB 마이그레이션은 `0003_market_close.sql`을 추가 실행. 첫날의 초기 갱신분은 수동으로 저장하였으며 `market.last_success_at`은 **Cron API가 성공했을 때만** 생성됨. 상태 확인: `GET /api/status`.
+- 향후 신규 기업이 10개보다 늘어나면 `market_close`는 티커 정렬 순서대로 회차당 10개를 조회하고 다음 회차에 이어서 진행. 휴장일에도 마지막 거래일이 명시됨.
+- 서버측 관리자 인증이 구성된 환경에서만 `POST /api/admin/market-refresh` 및 `POST /api/admin/market-stop` 사용 가능.
+
 ## 아직 미구현
 
-현재 시세 공급원, 사람 검증 편집 화면, React/Vite + Workers Static Assets 전환, AI 기술평가, SEC 실제 네트워크 성공 확인. 거짓 점수/계약일 생성 금지. 자료의 역사적 시점과 마지막 성공 시각을 분리합니다.
+보장된 정식 라이선스 시세 API, 사람 검증 편집 화면, React/Vite + Workers Static Assets 전환, AI 기술평가, SEC 실제 네트워크 성공 확인. 거짓 점수/계약일 생성 금지. 자료의 역사적 시점과 마지막 성공 시각을 분리합니다.
