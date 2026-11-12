@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {scoreRange,parseForm4} from '../dist/worker.mjs';
+import worker, {scoreRange,parseForm4,parseLatestYahooClose} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
  const r=scoreRange({});
@@ -102,13 +102,32 @@ test('insider buy price is share-weighted and separate from fixed close in candi
  assert.match(queries[1],/SUM\(t\.shares\*t\.price_usd\)/);
  assert.match(queries[1],/ROUND\(bt\.buy_cost\/bt\.buy_shares,6\)/);
  assert.match(queries[1],/t\.code='P' AND t\.shares>0 AND t\.price_usd>0/);
+ assert.match(queries[1],/market_snapshots ms/);
 });
 
-test('price comparison columns and no fabricated live close', () => {
+test('latest daily close in main table and distinct historical seed in detail', () => {
  const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
- assert.match(html,/<th[^>]*>11\/9 종가/);
+ assert.match(html,/<th[^>]*>최근 종가/);
  assert.match(html,/<th[^>]*>내부자 매수단가/);
- assert.match(html,/insiderPriceMarkup\(c\)/);
+ assert.match(html,/latestCloseMarkup\(c\)/);
+ assert.match(html,/2026-11-09 과거 조사 종가/);
+ assert.match(html,/마지막 완료 거래일/);
  assert.equal((html.match(/colspan="11"/g)||[]).length,3);
- assert.match(html,/매일 갱신되지 않는 고정값/);
+ assert.doesNotMatch(html,/<th[^>]*>11\/9 종가/);
+});
+test('parse latest Yahoo close rejects active-session bar before regular close',()=>{
+ const stamps=['2026-11-11T14:30:00Z','2026-11-12T14:30:00Z'].map(x=>Date.parse(x)/1000);
+ const data={chart:{result:[{meta:{symbol:'SOPH',currency:'USD',instrumentType:'EQUITY'},timestamp:stamps,indicators:{quote:[{close:[7.465,7.99]}]}}]}};
+ assert.deepEqual(parseLatestYahooClose(data,'SOPH',new Date('2026-11-12T15:00:00Z')),{date:'2026-11-11',close:7.465});
+ assert.deepEqual(parseLatestYahooClose(data,'SOPH',new Date('2026-11-12T22:00:00Z')),{date:'2026-11-12',close:7.99});
+});
+test('reject provider symbol mismatch and invalid daily close',()=>{
+ const data={chart:{result:[{meta:{symbol:'IMSR',currency:'USD',instrumentType:'EQUITY'},timestamp:[Date.parse('2026-11-11T14:30:00Z')/1000],indicators:{quote:[{close:[2.56]}]}}]}};
+ assert.throws(()=>parseLatestYahooClose(data,'SOPH',new Date('2026-11-12T15:00:00Z')),/MISMATCH/);
+ data.chart.result[0].indicators.quote[0].close=[null];
+ assert.throws(()=>parseLatestYahooClose(data,'IMSR',new Date('2026-11-12T15:00:00Z')),/NO_COMPLETED_BAR/);
+});
+test('do not represent an old stale bar as current',()=>{
+ const data={chart:{result:[{meta:{symbol:'ANIX',currency:'USD',instrumentType:'EQUITY'},timestamp:[Date.parse('2026-10-01T14:30:00Z')/1000],indicators:{quote:[{close:[2.5]}]}}]}};
+ assert.throws(()=>parseLatestYahooClose(data,'ANIX',new Date('2026-11-12T15:00:00Z')),/STALE_BAR/);
 });
