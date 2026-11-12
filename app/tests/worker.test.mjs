@@ -131,3 +131,9 @@ test('do not represent an old stale bar as current',()=>{
  const data={chart:{result:[{meta:{symbol:'ANIX',currency:'USD',instrumentType:'EQUITY'},timestamp:[Date.parse('2026-10-01T14:30:00Z')/1000],indicators:{quote:[{close:[2.5]}]}}]}};
  assert.throws(()=>parseLatestYahooClose(data,'ANIX',new Date('2026-11-12T15:00:00Z')),/STALE_BAR/);
 });
+
+test('latest close remains visible in narrow-screen comparison',()=>{
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/th:nth-child\\(8\\),td:nth-child\\(8\\)\\{display:none\\}/);
+ assert.match(html,/th:nth-child\\(11\\),td:nth-child\\(11\\)\\{display:none\\}/);
+});
