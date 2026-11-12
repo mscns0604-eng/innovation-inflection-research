@@ -134,6 +134,6 @@ test('do not represent an old stale bar as current',()=>{
 
 test('latest close remains visible in narrow-screen comparison',()=>{
  const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
- assert.doesNotMatch(html,/th:nth-child\\(8\\),td:nth-child\\(8\\)\\{display:none\\}/);
- assert.match(html,/th:nth-child\\(11\\),td:nth-child\\(11\\)\\{display:none\\}/);
+ assert.equal(html.includes('th:nth-child(8),td:nth-child(8){display:none}'),false);
+ assert.equal(html.includes('th:nth-child(11),td:nth-child(11){display:none}'),true);
 });
