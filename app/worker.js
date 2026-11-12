@@ -7,6 +7,11 @@ const PAGE = __IIR_HTML__;
 const RUBRIC_VERSION = 'v0.2.0';
 const WEIGHTS = Object.freeze({insider:25,theme:20,technology:20,external_validation:10,financial:10,price:10,macro:5});
 const JOB = 'sec_form4';
+const MARKET_JOB = 'market_close';
+const MARKET_SOURCE = 'YAHOO_CHART_V8';
+const MARKET_BATCH = 10;
+const MARKET_RUN_MS = 49000;
+const MARKET_REQUEST_MS = 5200;
 const MAX_COMPANIES = 5;
 const MAX_FILINGS = 8;
 const MAX_REQUESTS = 18;
@@ -54,9 +59,10 @@ async function listCandidates(db,url){
  const where=mode==='ALL_ELIGIBLE'?"c.eligible_status IN ('ELIGIBLE','CONDITIONAL')":"c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND c.bio_mode = ?";
  const args=mode==='ALL_ELIGIBLE'?[]:[mode];
  const tradeAggregate=" LEFT JOIN (SELECT f.company_ticker AS ticker, SUM(t.shares) AS buy_shares, SUM(t.shares*t.price_usd) AS buy_cost, MIN(t.price_usd) AS min_buy_price_usd, MAX(t.price_usd) AS max_buy_price_usd, MIN(t.trade_date) AS first_buy_date, MAX(t.trade_date) AS last_buy_date, COUNT(*) AS buy_trade_rows, COUNT(DISTINCT COALESCE(NULLIF(t.reporting_owner_name,''),t.reporting_owner_key)) AS buy_named_owner_count, SUM(CASE WHEN t.verification_status='SECONDARY_P_UNVERIFIED' THEN 1 ELSE 0 END) AS secondary_trade_rows FROM insider_transactions t JOIN filings f ON f.id=t.filing_id WHERE t.code='P' AND t.shares>0 AND t.price_usd>0 GROUP BY f.company_ticker) bt ON bt.ticker=c.ticker";
- const common=' FROM companies c LEFT JOIN score_snapshots s ON s.id=(SELECT s2.id FROM score_snapshots s2 WHERE s2.company_ticker=c.ticker ORDER BY s2.asof_utc DESC,s2.id DESC LIMIT 1)'+tradeAggregate+' WHERE '+where;
+ const marketJoin=" LEFT JOIN market_snapshots ms ON ms.rowid=(SELECT p.rowid FROM market_snapshots p WHERE p.company_ticker=c.ticker AND p.close_usd>0 ORDER BY p.price_date DESC,p.retrieved_at_utc DESC LIMIT 1)";
+ const common=' FROM companies c LEFT JOIN score_snapshots s ON s.id=(SELECT s2.id FROM score_snapshots s2 WHERE s2.company_ticker=c.ticker ORDER BY s2.asof_utc DESC,s2.id DESC LIMIT 1)'+tradeAggregate+marketJoin+' WHERE '+where;
  const count=await db.prepare('SELECT COUNT(*) n'+common).bind(...args).first();
- const fields='c.*,CASE WHEN bt.buy_shares>0 THEN ROUND(bt.buy_cost/bt.buy_shares,6) ELSE NULL END AS insider_avg_buy_price_usd,bt.min_buy_price_usd,bt.max_buy_price_usd,bt.first_buy_date,bt.last_buy_date,bt.buy_trade_rows,bt.buy_named_owner_count,bt.secondary_trade_rows,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,s.review_rank,s.research_status AS reviewed_research_status,s.entry_risk_status,s.reason_summary AS current_reason_summary,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure';
+ const fields='c.*,CASE WHEN bt.buy_shares>0 THEN ROUND(bt.buy_cost/bt.buy_shares,6) ELSE NULL END AS insider_avg_buy_price_usd,bt.min_buy_price_usd,bt.max_buy_price_usd,bt.first_buy_date,bt.last_buy_date,bt.buy_trade_rows,bt.buy_named_owner_count,bt.secondary_trade_rows,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,s.review_rank,s.research_status AS reviewed_research_status,s.entry_risk_status,s.reason_summary AS current_reason_summary,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure,ms.close_usd AS latest_close_usd,ms.price_date AS latest_close_date,ms.source_name AS latest_close_source,ms.retrieved_at_utc AS latest_close_retrieved_at';
  // c.theme is a theme description; read the optional score as theme_score.
  const rows=await db.prepare('SELECT '+fields+common+' ORDER BY '+ALLOW_SORT[sort]+' LIMIT ? OFFSET ?').bind(...args,rawLimit,(rawPage-1)*rawLimit).all();
  return json({items:(rows.results||[]).map(displayRow),total:count?.n||0,page:rawPage,limit:rawLimit});
@@ -65,17 +71,22 @@ async function candidateDetail(db,ticker){
  if(!validTicker(ticker))return json({error:'INVALID_TICKER'},400);
  const c=await db.prepare('SELECT * FROM companies WHERE ticker=?').bind(ticker).first();
  if(!c)return json({error:'NOT_FOUND'},404);
- const [filings,scores,events,signals,trades]=await Promise.all([
+ const [filings,scores,events,signals,trades,prices]=await Promise.all([
   db.prepare('SELECT accession_number,filing_type,accepted_at_utc,source_url,parse_status FROM filings WHERE company_ticker=? ORDER BY accepted_at_utc DESC LIMIT 25').bind(ticker).all(),
   db.prepare('SELECT * FROM score_snapshots WHERE company_ticker=? ORDER BY asof_utc DESC LIMIT 15').bind(ticker).all(),
   db.prepare('SELECT * FROM catalysts WHERE company_ticker=? ORDER BY target_start LIMIT 20').bind(ticker).all(),
   db.prepare('SELECT signal_type,disclosed_at_utc,aggregate_buy_usd,status,source_url FROM candidate_signals WHERE company_ticker=? ORDER BY disclosed_at_utc DESC LIMIT 30').bind(ticker).all(),
-  db.prepare('SELECT t.reporting_owner_name,t.trade_date,t.code,t.shares,t.price_usd,t.value_usd,t.direct_indirect,t.plan_10b5_1,t.purchase_kind,t.verification_status,f.source_url FROM insider_transactions t JOIN filings f ON f.id=t.filing_id WHERE f.company_ticker=? ORDER BY t.trade_date DESC,t.id DESC LIMIT 50').bind(ticker).all()
+  db.prepare('SELECT t.reporting_owner_name,t.trade_date,t.code,t.shares,t.price_usd,t.value_usd,t.direct_indirect,t.plan_10b5_1,t.purchase_kind,t.verification_status,f.source_url FROM insider_transactions t JOIN filings f ON f.id=t.filing_id WHERE f.company_ticker=? ORDER BY t.trade_date DESC,t.id DESC LIMIT 50').bind(ticker).all(),
+  db.prepare('SELECT price_date,close_usd,adjustment_type,source_name,retrieved_at_utc FROM market_snapshots WHERE company_ticker=? ORDER BY price_date DESC LIMIT 15').bind(ticker).all()
  ]);
- return json({company:c,filings:filings.results,scores:(scores.results||[]).map(s=>({...s,...scoreRange(s)})),catalysts:events.results,signals:signals.results,insider_trades:trades.results||[],rubric_version:RUBRIC_VERSION});
+ return json({company:c,filings:filings.results,scores:(scores.results||[]).map(s=>({...s,...scoreRange(s)})),catalysts:events.results,signals:signals.results,insider_trades:trades.results||[],market_prices:prices.results||[],rubric_version:RUBRIC_VERSION});
 }
 async function getStatus(db,env){
- const s=await db.prepare('SELECT job_name,last_attempt_at_utc,last_success_at_utc,last_error,cursor,enabled,last_run_state,error_count FROM pipeline_state WHERE job_name=?').bind(JOB).first();
+ const [s,m,summary]=await Promise.all([
+  db.prepare('SELECT job_name,last_attempt_at_utc,last_success_at_utc,last_error,cursor,enabled,last_run_state,error_count FROM pipeline_state WHERE job_name=?').bind(JOB).first(),
+  db.prepare('SELECT last_attempt_at_utc,last_success_at_utc,last_error,last_run_state,enabled FROM pipeline_state WHERE job_name=?').bind(MARKET_JOB).first(),
+  db.prepare('SELECT COUNT(DISTINCT company_ticker) AS covered,MAX(price_date) AS latest_price_date FROM market_snapshots WHERE close_usd>0').first()
+ ]);
  let state='NOT_CONFIGURED';
  if(!s?.enabled||env.AUTOMATION_ENABLED==='false')state='DISABLED';
  else if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(env.SEC_CONTACT_EMAIL||''))state='NOT_CONFIGURED';
@@ -83,7 +94,7 @@ async function getStatus(db,env){
  return json({version:'iir-mvp-0.1',rubric_version:RUBRIC_VERSION,seed_asof:'2026-11-09',historical_seed:true,
   sec:{state,last_attempt_at:s?.last_attempt_at_utc||null,last_success_at:s?.last_success_at_utc||null,
   last_error:s?.last_error||null,checkpoint:s?.cursor||0,auto_enabled:!!s?.enabled&&env.AUTOMATION_ENABLED!=='false'},
-  market:{state:'NOT_CONFIGURED',last_success_at:null},technology:{state:'MANUAL_REVIEW'},server_time_utc:iso()});
+  market:{state:!m?.enabled||env.AUTOMATION_ENABLED==='false'?'DISABLED':(m?.last_run_state||'NEVER_RUN'),last_attempt_at:m?.last_attempt_at_utc||null,last_success_at:m?.last_success_at_utc||null,last_error:m?.last_error||null,covered:summary?.covered||0,latest_price_date:summary?.latest_price_date||null},technology:{state:'MANUAL_REVIEW'},server_time_utc:iso()});
 }
 async function listSignals(db,url){
  const since=url.searchParams.get('since')||'2026-01-01';
@@ -231,18 +242,97 @@ async function runRefresh(env,source){
  console.log(JSON.stringify({job:JOB,source,state,checked,changed,requests:ctx.requests,error:err}));
  return {state,checked,changed,requests:ctx.requests,error:err};
 }
+
+// Regular-session daily *close*, not last traded/pre-market/after-hours quote.
+// Yahoo's public chart endpoint is undocumented; validation failures preserve existing D1 data.
+export function parseLatestYahooClose(payload,ticker,now=new Date()){
+ if(!validTicker(ticker)||!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error('MARKET_INVALID_INPUT');
+ const chart=payload?.chart?.result?.[0], meta=chart?.meta;
+ if(!chart||String(meta?.symbol||'').toUpperCase()!==ticker||meta?.currency!=='USD'||meta?.instrumentType!=='EQUITY')throw Error('MARKET_TICKER_OR_CURRENCY_MISMATCH');
+ const times=chart.timestamp,closes=chart.indicators?.quote?.[0]?.close;
+ if(!Array.isArray(times)||!Array.isArray(closes)||times.length!==closes.length||times.length>40)throw Error('MARKET_INVALID_DAILY_BARS');
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(now).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ const currentDate=parts.year+'-'+parts.month+'-'+parts.day,nyMinute=(Number(parts.hour)%24)*60+Number(parts.minute);
+ let best=null;
+ for(let i=0;i<times.length;i++){
+  const stamp=times[i],close=closes[i];
+  if(!Number.isFinite(stamp)||stamp*1000>now.getTime()+60000||typeof close!=='number'||!Number.isFinite(close)||close<=0||close>=1e7)continue;
+  const date=new Date(stamp*1000).toISOString().slice(0,10);
+  if(date>currentDate||(date===currentDate&&nyMinute<16*60+30))continue;
+  if(!best||date>best.date)best={date,close:Number(close.toFixed(6))};
+ }
+ if(!best)throw Error('MARKET_NO_COMPLETED_BAR');
+ if(now.getTime()-Date.parse(best.date+'T00:00:00Z')>14*86400000)throw Error('MARKET_STALE_BAR');
+ return best;
+}
+async function fetchMarketClose(ticker,deadline){
+ if(Date.now()>deadline)throw Error('MARKET_BUDGET_EXCEEDED');
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),MARKET_REQUEST_MS);
+ try{
+  const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(ticker)+'?range=5d&interval=1d&includePrePost=false';
+  const response=await fetch(url,{headers:{'Accept':'application/json','User-Agent':'IIR-Research/0.2 EOD quote'},signal:controller.signal,redirect:'error'});
+  if(!response.ok)throw Error('YAHOO_HTTP_'+response.status);
+  if(Number(response.headers.get('content-length')||0)>120000)throw Error('MARKET_RESPONSE_TOO_LARGE');
+  const body=await response.text();
+  if(body.length>120000)throw Error('MARKET_RESPONSE_TOO_LARGE');
+  return parseLatestYahooClose(JSON.parse(body),ticker);
+ }finally{clearTimeout(timer)}
+}
+async function runMarketRefresh(env,source){
+ const db=env.DB;
+ if(env.AUTOMATION_ENABLED==='false')return {state:'DISABLED'};
+ const id=crypto.randomUUID(),now=iso(),lease=new Date(Date.now()+120000).toISOString();
+ const locked=await db.prepare("UPDATE pipeline_state SET lock_owner=?,lease_expires_at_utc=?,last_attempt_at_utc=?,last_run_state='RUNNING' WHERE job_name=? AND enabled=1 AND (lease_expires_at_utc IS NULL OR lease_expires_at_utc<?)").bind(id,lease,now,MARKET_JOB,now).run();
+ if(!locked.meta?.changes)return {state:'ALREADY_RUNNING_OR_STOPPED'};
+ const deadline=Date.now()+MARKET_RUN_MS;
+ let state='SUCCESS',ok=0,changed=0,failed=0,cursor=0,error='';
+ try{
+  await db.prepare("INSERT INTO pipeline_runs(id,job_name,started_at_utc,state,version) VALUES(?,?,?,'RUNNING','2')").bind(id,MARKET_JOB,now).run();
+  const rs=await db.prepare("SELECT ticker FROM companies WHERE eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY ticker LIMIT 100").all();
+  const companies=rs.results||[],n=companies.length;
+  const st=await db.prepare('SELECT cursor FROM pipeline_state WHERE job_name=?').bind(MARKET_JOB).first();
+  cursor=st?.cursor||0;if(cursor>=n)cursor=0;
+  for(let i=cursor;i<Math.min(n,cursor+MARKET_BATCH);i++){
+   if(Date.now()>deadline){state='PARTIAL';break}
+   const ticker=companies[i].ticker;
+   try{
+    const price=await fetchMarketClose(ticker,deadline);
+    const save=await db.prepare("INSERT INTO market_snapshots(company_ticker,price_date,close_usd,adjustment_type,source_name,retrieved_at_utc) VALUES(?,?,?,'RAW_REGULAR_CLOSE',?,?) ON CONFLICT(company_ticker,price_date,source_name) DO UPDATE SET close_usd=excluded.close_usd,retrieved_at_utc=excluded.retrieved_at_utc WHERE market_snapshots.close_usd!=excluded.close_usd")
+      .bind(ticker,price.date,price.close,MARKET_SOURCE,iso()).run();
+    changed+=save.meta?.changes||0;ok++;
+   }catch(e){
+    failed++;error=(ticker+': '+String(e?.message||e)).slice(0,180);
+    if(/YAHOO_HTTP_(401|403|429)/.test(error)){state='PARTIAL';cursor=i+1;break}
+   }
+   cursor=i+1;
+   await db.prepare('UPDATE pipeline_state SET cursor=? WHERE job_name=? AND lock_owner=?').bind(cursor,MARKET_JOB,id).run();
+  }
+  if(cursor>=n)cursor=0;
+  if(n===0)state='EMPTY';
+  else if(failed||state==='PARTIAL')state=ok?'PARTIAL':'FAILED';
+ }catch(e){state='FAILED';error=String(e?.message||e).slice(0,180)}
+ finally{
+  try{
+   await db.prepare('UPDATE pipeline_runs SET finished_at_utc=?,state=?,checked_count=?,changed_count=?,cursor=?,error_code=?,error_summary=? WHERE id=?').bind(iso(),state,ok+failed,changed,cursor,state==='FAILED'?'MARKET_REFRESH_FAILED':null,error||null,id).run();
+   await db.prepare("UPDATE pipeline_state SET lock_owner=NULL,lease_expires_at_utc=NULL,cursor=?,last_run_state=?,last_error=?,error_count=CASE WHEN ?='SUCCESS' THEN 0 ELSE error_count+1 END,last_success_at_utc=CASE WHEN ?='SUCCESS' OR (?='PARTIAL' AND ?>0) THEN ? ELSE last_success_at_utc END WHERE job_name=? AND lock_owner=?").bind(cursor,state,error||null,state,state,state,ok,iso(),MARKET_JOB,id).run();
+  }catch(e){console.error(JSON.stringify({job:MARKET_JOB,error:'PERSIST_FAILURE',detail:String(e).slice(0,160)}))}
+ }
+ console.log(JSON.stringify({job:MARKET_JOB,source,state,ok,changed,failed,error}));
+ return {state,ok,changed,failed,error};
+}
+
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
   try{
-   if(url.pathname==='/api/admin/refresh'||url.pathname==='/api/admin/stop'){
+   if(['/api/admin/refresh','/api/admin/stop','/api/admin/market-refresh','/api/admin/market-stop'].includes(url.pathname)){
     if(request.method!=='POST')return json({error:'METHOD_NOT_ALLOWED'},405);
     if(!await adminAllowed(request,env))return json({error:'ADMIN_AUTH_REQUIRED'},403);
     if(url.pathname.endsWith('/stop')){
-     await env.DB.prepare('UPDATE pipeline_state SET enabled=0 WHERE job_name=?').bind(JOB).run();
+     await env.DB.prepare('UPDATE pipeline_state SET enabled=0 WHERE job_name=?').bind(url.pathname.includes('market-')?MARKET_JOB:JOB).run();
      return json({ok:true,stopped:true});
     }
-    return json(await runRefresh(env,'MANUAL'));
+    return json(url.pathname.includes('market-')?await runMarketRefresh(env,'MANUAL'):await runRefresh(env,'MANUAL'));
    }
    if(request.method!=='GET')return json({error:'METHOD_NOT_ALLOWED'},405);
    if(url.pathname==='/api/status')return getStatus(env.DB,env);
@@ -264,6 +354,9 @@ export default {
   }catch(e){console.error(JSON.stringify({event:'api_error',path:url.pathname,error:String(e).slice(0,180)}));return json({error:'INTERNAL_ERROR',message:'데이터 요청 처리 실패'},500)}
  },
  async scheduled(event,env,ctx){
-  ctx.waitUntil(runRefresh(env,'CRON').catch(e=>console.error(JSON.stringify({event:'cron_error',error:String(e).slice(0,180)}))));
+  ctx.waitUntil(Promise.allSettled([
+   runRefresh(env,'CRON').catch(e=>console.error(JSON.stringify({event:'sec_cron_error',error:String(e).slice(0,180)}))),
+   runMarketRefresh(env,'CRON').catch(e=>console.error(JSON.stringify({event:'market_cron_error',error:String(e).slice(0,180)})))
+  ]));
  }
 };
