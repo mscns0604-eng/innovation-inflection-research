@@ -133,7 +133,7 @@ async function getStatus(db,env){
  const [s,m,summary]=await Promise.all([
   db.prepare('SELECT job_name,last_attempt_at_utc,last_success_at_utc,last_error,cursor,enabled,last_run_state,error_count FROM pipeline_state WHERE job_name=?').bind(JOB).first(),
   db.prepare('SELECT last_attempt_at_utc,last_success_at_utc,last_error,last_run_state,enabled FROM pipeline_state WHERE job_name=?').bind(MARKET_JOB).first(),
-  db.prepare('SELECT COUNT(DISTINCT m.company_ticker) AS covered,MAX(m.price_date) AS latest_price_date FROM market_snapshots m INNER JOIN companies c ON c.ticker=m.company_ticker INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE m.close_usd>0 AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL')').first()
+  db.prepare("SELECT COUNT(DISTINCT m.company_ticker) AS covered,MAX(m.price_date) AS latest_price_date FROM market_snapshots m INNER JOIN companies c ON c.ticker=m.company_ticker INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE m.close_usd>0 AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL')\").first()
  ]);
  let state='NOT_CONFIGURED';
  if(!s?.enabled||env.AUTOMATION_ENABLED==='false')state='DISABLED';
@@ -259,7 +259,7 @@ async function runRefresh(env,source){
  let checked=0,changed=0,cursor=0,state='SUCCESS',err='';
  try{
   await db.prepare("INSERT INTO pipeline_runs(id,job_name,started_at_utc,state,version) VALUES(?,?,?,'RUNNING','1')").bind(id,JOB,now).run();
-  const list=await db.prepare('SELECT c.ticker,c.cik FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' WHERE c.eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY c.ticker ASC LIMIT 100').all();
+  const list=await db.prepare("SELECT c.ticker,c.cik FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' WHERE c.eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY c.ticker ASC LIMIT 100\").all();
   const companies=list.results||[],count=companies.length;
   const st=await db.prepare('SELECT cursor FROM pipeline_state WHERE job_name=?').bind(JOB).first();
   cursor=st?.cursor||0;if(cursor>=count)cursor=0;
