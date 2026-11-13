@@ -145,6 +145,70 @@ function renderStats(){
  el('kpi-priority').textContent=active.filter(function(c){return (c.reviewed_research_status||c.research_status)==='RESEARCH_PRIORITY'}).length;
  el('kpi-risk').textContent=active.filter(function(c){return String(c.entry_risk_status||'').startsWith('ON_HOLD')||String(c.entry_risk_status||'').startsWith('CONDITIONAL')||['ON_HOLD','CONDITIONAL'].includes(c.reviewed_research_status||c.research_status)}).length;
 }
+
+var bioTopics={DEMENTIA:'🧠 치매',AGING:'🧬 노화',CANCER:'🎗 암',ALOPECIA:'🌱 탈모',APPLIED_AI:'✦ AI 바이오'};
+function bioTagsMarkup(c){
+ var names=String(c.bio_tags||'').split('|').filter(function(x){return Object.prototype.hasOwnProperty.call(bioTopics,x)});
+ var order=['DEMENTIA','AGING','CANCER','ALOPECIA','APPLIED_AI'];
+ names.sort(function(a,b){return order.indexOf(a)-order.indexOf(b)});
+ if(!names.length)return '<span class="muted">관심 분야 검증 전</span>';
+ return names.map(function(x){return '<span class="bio-tag bio-'+esc(x.toLowerCase())+'">'+esc(bioTopics[x])+'</span>'}).join('')+
+ '<div class="tiny muted" style="margin-top:5px">기존 연구 분류 · 원문 확인 필요</div>';
+}
+function renderBio(){
+ var list=filtered(),all=data.filter(function(c){return c.bio_mode==='QUALIFIED_BIO'&&c.quarter_review_status!=='EXCLUDED'}),target=el('bio-rows');
+ el('count-label').textContent='표시 '+list.length+'개 / 바이오 '+all.length+'개';
+ if(!list.length){target.innerHTML='<tr><td colspan="10" class="empty">해당 분야의 검증된 후보가 아직 없습니다. 분기별 신규 발굴 후 추가됩니다.</td></tr>';return}
+ target.innerHTML=list.map(function(c){
+ var origin=c.quarter_origin==='CARRYOVER'?'전 분기 이월':c.quarter_origin==='LEGACY_SEED'?'과거 조사에서 도입':'신규 발굴';
+ var review=c.quarter_review_status==='CARRY_FORWARD'?'다음 분기 이월 예정':'이번 분기 조사 중';
+ return '<tr data-ticker="'+esc(c.ticker)+'" tabindex="0" aria-label="'+esc(c.ticker)+' 바이오 상세 보기">'+
+ '<td><button type="button" class="star '+(saved.has(c.ticker)?'saved':'')+'" data-star="'+esc(c.ticker)+'" aria-label="관심 종목">'+(saved.has(c.ticker)?'★':'☆')+'</button></td>'+
+ '<td><div class="stock">'+esc(c.ticker)+'</div><div class="company">'+esc(c.name)+'</div>'+(c.review_rank?'<div class="tiny muted">기존 연구순위 #'+Number(c.review_rank)+'</div>':'')+'</td>'+
+ '<td><div class="bio-tags">'+bioTagsMarkup(c)+'</div></td>'+
+ '<td><div class="bio-tech">'+esc(c.summary||c.theme||'기술 근거 확인 전')+'</div><div class="tiny muted">임상/연구 단계 원문 검증 전</div></td>'+
+ '<td>'+(c.next_check_trigger?'<strong>'+esc(c.next_check_trigger)+'</strong>':'<span class="muted">공식 확인 일정 없음</span>')+'<div class="tiny muted">'+esc(c.next_check_date?date(c.next_check_date):'이벤트 날짜 미확인')+'</div></td>'+
+ '<td><span class="symbol '+signalClass(c.signal_type)+'">'+esc(label(c.signal_type))+'</span><div class="tiny muted">'+esc(money(c.buy_amount_usd))+' · 거래 성격 검증 전</div></td>'+
+ '<td class="mono">'+latestCloseMarkup(c)+'</td>'+
+ '<td><div class="risk">'+esc(c.risk_note||'검증 전')+'</div></td>'+
+ '<td><strong>'+esc(c.research_quarter||'미등록')+'</strong><div class="tiny muted">'+esc(origin)+'</div></td>'+
+ '<td><span class="symbol unknown">'+esc(review)+'</span><div class="tiny muted">'+esc(entryLabel(c.entry_risk_status))+'</div></td></tr>';
+ }).join('');
+}
+function renderQuarter(q){
+ quarterInfo=q;
+ var parts=Array.isArray(q.totals)?q.totals:[],sum=function(f){return parts.filter(f).reduce(function(a,x){return a+Number(x.n||0)},0)};
+ var tech=sum(function(x){return x.track==='TECH'}),bio=sum(function(x){return x.track==='BIO'});
+ var incoming=sum(function(x){return x.origin==='NEW'}),carried=sum(function(x){return x.origin==='CARRYOVER'});
+ el('quarter-banner').innerHTML='<strong>'+esc(q.view_quarter||'분기 미확인')+' 연구 현황</strong> · 기술 '+tech+'개 · 바이오 '+bio+'개 · 신규 발굴 '+incoming+'개 · 다음 분기에서 이월 '+carried+'개'+
+ '<div class="tiny muted" style="margin-top:5px">분기별 조사·제외·이월 / 별도 보류 목록 없음 / 기존 연구 후보는 신규 발굴에 산입하지 않음 / 자동 신규 발굴은 아직 미구현</div>';
+}
+function applyView(next,changeUrl){
+ if(next!=='tech'&&next!=='bio')return;
+ view=next;selected='ALL';
+ el('bio').value=next==='bio'?'QUALIFIED_BIO':'NON_BIO';
+ el('tech-table').hidden=next==='bio';el('bio-table').hidden=next==='tech';el('bio-topics').hidden=next==='tech';
+ el('page-title').innerHTML=next==='bio'?'바이오 혁신주 레이더<span style="color:#83aaff">.</span>':'기술혁신주 레이더<span style="color:#83aaff">.</span>';
+ document.querySelector('.label-title').textContent=next==='bio'?'바이오 기업 스크리닝':'기술혁신주 스크리닝';
+ document.querySelectorAll('[data-view]').forEach(function(x){var active=x.dataset.view===next;x.classList.toggle('active',active);x.setAttribute('aria-selected',String(active))});
+ document.querySelectorAll('[data-topic]').forEach(function(x){x.classList.toggle('active',x.dataset.topic===topic)});
+ document.querySelectorAll('[data-filter]').forEach(function(x){x.classList.toggle('active',x.dataset.filter==='ALL')});
+ if(changeUrl){var u=new URL(location.href);u.searchParams.set('view',next);if(next==='bio'&&topic!=='ALL')u.searchParams.set('topic',topic);else u.searchParams.delete('topic');history.replaceState(null,'',u.pathname+u.search)}
+ document.querySelector('.stat:nth-child(1) .lbl').textContent=next==='bio'?'바이오 관찰 후보':'기술혁신 후보';
+ persist();renderStats();render();
+}
+function renderBioDetail(d){
+ var target=el('bio-detail');if(!target)return;
+ var assets=Array.isArray(d.bio_assets)?d.bio_assets:[],events=Array.isArray(d.bio_milestones)?d.bio_milestones:[],history=Array.isArray(d.research_quarters)?d.research_quarters:[];
+ var html='<h3>바이오 파이프라인 및 연구 이력</h3><p class="muted">연구 주제 태그와 임상 유효성 입증은 별개입니다. 공식 증거를 확인한 자료만 단계가 확정됩니다.</p>';
+ if(!assets.length)html+='<p><strong>개별 연구 파이프라인 검증 대기</strong> · 임상시험 번호와 단계가 아직 공식 원문에서 확인되지 않았습니다.</p>';
+ else assets.slice(0,12).forEach(function(a){html+='<p><strong>'+esc(a.asset_name)+'</strong> · '+esc(a.phase_verified?a.phase_label:'연구 단계 미검증')+' · '+esc(a.modality||'치료 기술 확인 전')+'</p>'});
+ if(!events.length)html+='<p class="muted">확정 가능한 임상·규제 발표 일정 없음</p>';
+ else events.slice(0,10).forEach(function(m){html+='<p>'+esc(m.description)+' · '+esc(m.date_confidence==='UNVERIFIED'?'일정 검증 전':date(m.target_start))+'</p>'});
+ if(history.length){html+='<h3>분기 이력 (보류 목록 없이 이월)</h3>';history.slice(0,6).forEach(function(r){html+='<p>'+esc(r.quarter_id)+' · '+esc(r.origin==='CARRYOVER'?'이월':r.origin==='LEGACY_SEED'?'기존 도입':'신규')+' · '+esc(r.review_status==='EXCLUDED'?'제외':r.review_status==='CARRY_FORWARD'?'이월 결정':'조사 중')+(r.next_check_trigger?' · '+esc(r.next_check_trigger):'')+'</p>'})}
+ target.innerHTML=html;
+}
+
 function openDetail(t){var c=data.find(function(x){return x.ticker===t});if(!c)return;var reviewMarkup=c.score_asof_utc?'<div class="block"><h3>2026-11-10 수동 재평가</h3><p><strong>연구 우선순위 #'+esc(c.review_rank||'–')+'</strong> · '+esc(label(c.reviewed_research_status||c.research_status))+' · <strong>'+esc(entryLabel(c.entry_risk_status))+'</strong></p><p>'+esc(c.current_reason_summary||'평가 근거 확인 중')+'</p><p class="muted">배점 25/20/20/10/10/10/5 유지. 불충분한 항목은 점수를 매기지 않았습니다. 아래의 과거 스크리닝과 구분하세요.</p><a href="https://github.com/mscns0604-eng/innovation-inflection-research/blob/main/research/2026-11-11_full_manual_review.md" target="_blank" rel="noopener noreferrer">7개 영역별 근거와 검토 보고서 ↗</a></div>':'';el('detail-body').innerHTML='<div class="eyebrow">EQUITY / RESEARCH SNAPSHOT</div><h2 id="detail-title">'+esc(c.ticker)+'</h2><div class="subtitle">'+esc(c.name)+' · '+esc(c.industry)+'</div><span class="symbol unknown">2026-11-09 과거 조사 / 매수 사실 검증 필요</span>'+reviewMarkup+'<div class="block"><h3>기술 / 변곡점</h3><p>'+esc(c.summary||c.theme||'자료 미확인')+'</p><p><strong>핵심 확인:</strong> '+esc(c.focus||'후속 연구 필요')+'</p></div><div class="block"><h3>당시 매수 신호와 평가</h3><div class="facts"><div class="fact"><label>신호 분류 (미검증)</label><strong>'+esc(label(c.signal_type))+'</strong></div><div class="fact"><label>참여 신고자</label><strong>'+esc(c.buyers_count==null?'미확인':c.buyers_count+'명')+'</strong></div><div class="fact"><label>당시 집계 매수액</label><strong>'+esc(money(c.buy_amount_usd))+'</strong></div><div class="fact"><label>가설적 100점 평가</label><strong>'+esc(c.confirmed_score==null?'미평가':c.confirmed_score+'~'+c.possible_score)+'</strong></div><div class="fact"><label>최근 정규장 종가</label><strong>'+esc(unitPrice(c.latest_close_usd))+'</strong><div class="tiny muted">'+esc(date(c.latest_close_date))+' · Yahoo Finance 일봉</div></div><div class="fact"><label>2026-11-09 과거 조사 종가</label><strong>'+(c.seed_price_usd==null?'미확인':'$'+Number(c.seed_price_usd).toFixed(2))+'</strong></div><div class="fact"><label>매수단가 · 수집분 가중평균</label><strong>'+esc(unitPrice(c.insider_avg_buy_price_usd))+'</strong><div class="tiny muted">'+esc(c.buy_trade_rows||0)+'거래행 · 전체 매수가 아님</div></div><div class="fact"><label>판단 상태</label><strong>'+esc(label(c.research_status))+'</strong></div></div></div><div class="block chart-block"><h3>주가 추이 · OHLC 막대</h3><p class="chart-caption">기간 선택은 차트 하단(1M · 3M · 6M · 1Y · 5Y 등)을 사용하세요. 각 구간은 TradingView가 제공하는 해당 거래소 가격/캔들 원자료로 표시합니다. 자체 평균값·추정값은 생성하지 않습니다.</p><div id="tv-chart" class="market-chart" aria-label="종목별 주가 변동 차트"><div class="chart-loading">가격 차트 연결 중…</div></div><p class="chart-caption">차트 제공: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> · 미국 거래소 시간 기준 · 실시간/지연 여부, 거래정지, 주식분할 및 배당 처리 기준은 제공사 확인. 상단 최근 종가는 Yahoo Finance 정규장 일봉이며, 11/9 값은 별도의 과거 연구 기록입니다.</p></div><div class="block"><h3>주의할 위험 / 반증 근거</h3><p style="color:#f3bda0">'+esc(c.risk_note||'개별 위험 검증 대기')+'</p><p class="muted">기술 이벤트 일정, 실시간 시세, 현금소진, SEC 주석은 아직 최신 검증되지 않았습니다. 최근 종가 기준일 확인 필수.</p></div><div class="links"><a class="linkbtn" target="_blank" rel="noopener noreferrer" href="https://github.com/mscns0604-eng/innovation-inflection-research/blob/main/research/2026-11-09_screen.md">GitHub 연구 기록 ↗</a><a class="linkbtn" target="_blank" rel="noopener noreferrer" href="https://www.sec.gov/edgar/search/">SEC EDGAR 직접 확인 ↗</a></div><div class="block" id="sec-filing-list"><h3>최근 SEC 수집 공시</h3><p class="muted">수집 이력 조회 중…</p></div><div class="about">자료구분: historical_seed · 검증상태: UNVERIFIED<br>평가기준: IIR RUBRIC v0.2.0 · 과거 가격을 현재 시세로 사용하지 마세요.</div>';lastDetailFocus=document.activeElement;el('cover').classList.add('open');document.body.classList.add('detail-open');el('cover').setAttribute('aria-hidden','false');el('cover').querySelector('.detail').scrollTop=0;el('close').focus();loadSecFilings(t);mountTradingView(t)}
 function loadSecFilings(t){
  fetch('/api/candidates/'+encodeURIComponent(t),{cache:'no-store'}).then(function(r){
