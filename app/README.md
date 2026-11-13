@@ -8,7 +8,7 @@
 
 Node.js 22.18+와 cf CLI 사용. `npm install`, `npm test`, `npm run build`, `npm run deploy` 순서. cf 로그인은 본인 계정으로 수행합니다. `scripts/build.mjs`는 `web.html`을 `worker.js`에 주입하여 `dist/worker.mjs`를 생성합니다. `dist`는 .gitignore 처리합니다. API로 첫 배포를 수행했으며 GitHub 푸시가 자동 배포된다고 가정하지 않습니다.
 
-Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql`, `0005_q4_candidate_intake.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
+Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql`, `0005_q4_candidate_intake.sql`, `0006_us_company_only.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
 
 ## 공개 API
 
@@ -60,3 +60,13 @@ UTC `30 23 * * MON-FRI`(KST 화~토 08:30), UTC `30 11 * * MON-FRI`(KST 월~금 
 ## 아직 미구현
 
 보장된 정식 라이선스 시세 API, 사람 검증 편집 화면, React/Vite + Workers Static Assets 전환, AI 기술평가, SEC 실제 네트워크 성공 확인. 거짓 점수/계약일 생성 금지. 자료의 역사적 시점과 마지막 성공 시각을 분리합니다.
+
+## 미국 본사·법인 레이더만 표시 (v0.3.2 / 2026-11-13)
+
+- `app/migrations/0006_us_company_only.sql`에서 **기술 10 + 바이오 10** 유지: 제외 APTV/GFS/SOPH/ACIU, 신규 OUST/TMDX/ANVS/FATE. 기존 공시·가격·점수·분기 연구 데이터 보존, 삭제 금지.
+- `company_listing_verification` 24개 티커에 미국 법인·본사 국가, NYSE/Nasdaq 시장, SEC 또는 공식 기업 IR 출처, 확인일 기록. 미국 법인+미국 본사+미국 거래소 보통주만 `US_CONFIRMED`.
+- 후보·연구상세·신호·수집 API는 `company_listing_verification` 활성 자격 필터를 강제하며, 자격 미확인 종목은 신규 발굴 시 바로 화면에 노출되지 않음.
+- **IMSR**: 캐나다에서 시작했지만 2024년 델라웨어로 미국 법인 재설립, 미국 Charlotte 본사이므로 유지 (SEC 2026 Form 10-Q).
+- ANVS: 2026년 10월 NYSE 상장요건 통지 및 11월 증자·워런트 위험이 큰 **고위험 조사 후보**. 01~10은 추천/확정 수익순위 아님.
+- 국내 증권사별 매매 가능 여부는 실시간 검증하지 않으므로 포털/레이더 모두 거래가능 확답을 제공하지 않음.
+- 연구 기록: `research/2026-11-13_us_only_reselection.md`.
