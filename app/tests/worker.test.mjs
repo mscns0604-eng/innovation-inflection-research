@@ -155,7 +155,8 @@ test('invalid research quarter is rejected before database read',async()=>{
 });
 test('quarter API returns counts and explicit no-hold rollover rule',async()=>{
  const db={prepare(sql){
-  return {bind(){return {first:async()=>({quarter_id:'2026Q4',start_date:'2026-10-01',end_date:'2026-12-31'}),all:async()=>({results: sql.includes('GROUP BY')?[{track:'BIO',origin:'LEGACY_SEED',review_status:'RESEARCHING',n:2}]:[{quarter_id:'2026Q4'}]})}}};
+  const statement={first:async()=>({quarter_id:'2026Q4',start_date:'2026-10-01',end_date:'2026-12-31'}),all:async()=>({results: sql.includes('GROUP BY')?[{track:'BIO',origin:'LEGACY_SEED',review_status:'RESEARCHING',n:2}]:[{quarter_id:'2026Q4'}]})};
+  return {...statement,bind(){return statement}};
  }};
  const r=await worker.fetch(new Request('https://iir.example/api/quarter?quarter=2026Q4'),{DB:db});
  assert.equal(r.status,200);
