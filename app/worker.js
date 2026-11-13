@@ -44,12 +44,12 @@ export function quarterFor(at=new Date()){
  return parts.year+'Q'+(Math.floor((Number(parts.month)-1)/3)+1);
 }
 export function previousQuarter(id){
- if(!/^20\\d{2}Q[1-4]$/.test(id))throw Error('INVALID_QUARTER');
+ if(!/^20\d{2}Q[1-4]$/.test(id))throw Error('INVALID_QUARTER');
  const y=Number(id.slice(0,4)),q=Number(id.slice(5));
  return q===1?(y-1)+'Q4':y+'Q'+(q-1);
 }
 function quarterDates(id){
- if(!/^20\\d{2}Q[1-4]$/.test(id))throw Error('INVALID_QUARTER');
+ if(!/^20\d{2}Q[1-4]$/.test(id))throw Error('INVALID_QUARTER');
  const year=Number(id.slice(0,4)),q=Number(id.slice(5));
  const start=new Date(Date.UTC(year,(q-1)*3,1)).toISOString().slice(0,10);
  const end=new Date(Date.UTC(year,q*3,0)).toISOString().slice(0,10);
@@ -66,7 +66,7 @@ async function ensureQuarter(db,source){
 }
 async function getQuarterState(db,url){
  const current=quarterFor(),id=url.searchParams.get('quarter')||current;
- if(!/^20\\d{2}Q[1-4]$/.test(id))return json({error:'INVALID_QUARTER'},400);
+ if(!/^20\d{2}Q[1-4]$/.test(id))return json({error:'INVALID_QUARTER'},400);
  const [q,counts,available]=await Promise.all([
   db.prepare('SELECT * FROM research_quarters WHERE quarter_id=?').bind(id).first(),
   db.prepare('SELECT track,origin,review_status,COUNT(*) AS n FROM research_quarter_entries WHERE quarter_id=? GROUP BY track,origin,review_status').bind(id).all(),
@@ -92,7 +92,7 @@ async function listCandidates(db,url){
  const mode=url.searchParams.get('mode')||'ALL_ELIGIBLE';
  const quarter=url.searchParams.get('quarter')||quarterFor();
  const quarterOnly=url.searchParams.get('quarter_only')==='1';
- if(!/^20\\d{2}Q[1-4]$/.test(quarter)||!['0','1',null].includes(url.searchParams.get('quarter_only')))return json({error:'INVALID_QUARTER'},400);
+ if(!/^20\d{2}Q[1-4]$/.test(quarter)||!['0','1',null].includes(url.searchParams.get('quarter_only')))return json({error:'INVALID_QUARTER'},400);
  if(!['ALL_ELIGIBLE','NON_BIO','QUALIFIED_BIO'].includes(mode))return json({error:'INVALID_MODE'},400);
  const sort=url.searchParams.get('sort')||'priority';
  if(!ALLOW_SORT[sort])return json({error:'INVALID_SORT'},400);
