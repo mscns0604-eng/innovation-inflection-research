@@ -8,7 +8,7 @@
 
 Node.js 22.18+와 cf CLI 사용. `npm install`, `npm test`, `npm run build`, `npm run deploy` 순서. cf 로그인은 본인 계정으로 수행합니다. `scripts/build.mjs`는 `web.html`을 `worker.js`에 주입하여 `dist/worker.mjs`를 생성합니다. `dist`는 .gitignore 처리합니다. API로 첫 배포를 수행했으며 GitHub 푸시가 자동 배포된다고 가정하지 않습니다.
 
-Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `migrations/0002_historical_seed.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
+Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
 
 ## 공개 API
 
@@ -36,6 +36,15 @@ UTC `30 23 * * MON-FRI`(KST 화~토 08:30), UTC `30 11 * * MON-FRI`(KST 월~금 
 - DB 마이그레이션은 `0003_market_close.sql`을 추가 실행. 첫날의 초기 갱신분은 수동으로 저장하였으며 `market.last_success_at`은 **Cron API가 성공했을 때만** 생성됨. 상태 확인: `GET /api/status`.
 - 향후 신규 기업이 10개보다 늘어나면 `market_close`는 티커 정렬 순서대로 회차당 10개를 조회하고 다음 회차에 이어서 진행. 휴장일에도 마지막 거래일이 명시됨.
 - 서버측 관리자 인증이 구성된 환경에서만 `POST /api/admin/market-refresh` 및 `POST /api/admin/market-stop` 사용 가능.
+
+## 분기형 바이오·기술혁신주 이중 레이더 (v0.3)
+
+- 공식 승인: 저장소 루트의 `BIO_QUARTERLY_POLICY.md`; 치매/노화/암/탈모/실질 바이오 AI 태그, 전임상 포함, 화장품·보조제 제외, 일반 의료로봇은 기술 탭에 남김.
+- 동일 D1에 연구 분기 `research_quarters`, 분기별 회사 `research_quarter_entries`, 바이오 프로필·태그·자산·임상·마일스톤 테이블을 별도 추가. 기존 내역과 이력 절대 덮어쓰기 금지.
+- 2026Q4 기존 후보 10개는 `LEGACY_SEED` 8 TECH/2 BIO, **2026Q4에 새로 발굴했다고 간주하지 않음**.
+- `GET /api/quarter`는 분기 ID와 상태 통계를, `GET /api/candidates?mode=QUALIFIED_BIO&quarter_only=1`은 현분기 바이오 목록을 반환. `GET /api/candidates/:ticker`는 파이프라인·태그·마일스톤·분기 이력 정보(검증 전은 비워둠)를 반환.
+- 분기 경계에서 `RESEARCHING`/`CARRY_FORWARD`만 회차당 40개씩 신규 분기 `CARRYOVER`로 자동 이월. `EXCLUDED`는 자동 이월하지 않으며 과거 이력에 남김. **보류 전용 목록은 없음**. 이월은 연구 완료나 임상 성공을 의미하지 않음.
+- **아직 자동 신규 기업 발굴·임상 연구 평가·관리자 편집 화면은 미구현**; 해당 영역을 자동화된 것처럼 표현하지 않음.
 
 ## 아직 미구현
 
