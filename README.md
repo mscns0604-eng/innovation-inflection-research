@@ -22,3 +22,5 @@
 > 중요: 배점은 검증된 예측모형이 아닌 **가설적 기준**. 종목 발굴과 실제 매수 결정은 독립적으로 판단한다.
 
 > 보안: GitHub 저장소의 Public/Private 여부를 확인하고 비공개 연구·매매정보는 Public에 게시하지 않는다.
+
+- [research/2026-11-13_us_only_reselection.md](research/2026-11-13_us_only_reselection.md): 미국 법인·미국 본사·NYSE/Nasdaq 보통주 자격 재검증, 해외법인 제외 및 신규 교체 근거
