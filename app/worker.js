@@ -134,7 +134,7 @@ async function secText(path,ctx){
   attempts++;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),SEC_TIMEOUT_MS);
   try{
-   const res=await fetch(target,{headers,signal:controller.signal,redirect:'error'});
+   const res=await fetch(target,{headers,signal:controller.signal,redirect:'manual'});
    if([401,403,429].includes(res.status))throw Error('SEC_HTTP_'+res.status+'_STOP');
    if(res.status>=500&&attempts<2){await new Promise(r=>setTimeout(r,300));continue}
    if(!res.ok)throw Error('SEC_HTTP_'+res.status);
@@ -270,7 +270,7 @@ async function fetchMarketClose(ticker,deadline){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),MARKET_REQUEST_MS);
  try{
   const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(ticker)+'?range=5d&interval=1d&includePrePost=false';
-  const response=await fetch(url,{headers:{'Accept':'application/json','User-Agent':'IIR-Research/0.2 EOD quote'},signal:controller.signal,redirect:'error'});
+  const response=await fetch(url,{headers:{'Accept':'application/json','User-Agent':'IIR-Research/0.2 EOD quote'},signal:controller.signal,redirect:'manual'});
   if(!response.ok)throw Error('YAHOO_HTTP_'+response.status);
   if(Number(response.headers.get('content-length')||0)>120000)throw Error('MARKET_RESPONSE_TOO_LARGE');
   const body=await response.text();
