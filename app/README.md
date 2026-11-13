@@ -2,7 +2,7 @@
 
 운영 주소: https://iir-innovation-radar.shnboy.workers.dev/
 
-**실제 구성:** Cloudflare Workers + D1 + Cron. 성능/신속한 운영을 우선해 초기 UI는 경량 HTML/CSS/JS로 작성했으며 React/Vite로 만들었다고 주장하지 않습니다. 원본 STANDARD / RUBRIC / 기타 연구 기준서는 변경하지 않았습니다.
+**실제 구성:** Cloudflare Workers + D1 + Cron. 성능/신속한 운영을 우선해 초기 UI는 경량 HTML/CSS/JS로 작성했으며 React/Vite로 만들었다고 주장하지 않습니다. RUBRIC v0.2.0의 100점 배점은 유지하고, 승인된 바이오 범위·분기 운영 규칙은 STANDARD v0.3 및 BIO_QUARTERLY_POLICY에 버전별로 기록했습니다.
 
 ## 로컬 개발 / 배포
 
