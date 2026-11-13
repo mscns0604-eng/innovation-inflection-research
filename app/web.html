@@ -83,6 +83,60 @@ body.detail-open{overflow:hidden}
 #bio-table .risk{max-width:210px}
 #bio-table .bio-tech{max-width:220px}
 @media(max-width:600px){.radar-tab{flex:1;padding:12px 9px;font-size:12px}.bio-topics{padding:12px}.topic-buttons button{padding:8px 11px}#bio-table table{min-width:1050px}}
+
+/* IIR theme split — BIO: deep burgundy palette, matched luminance to existing dark tech mode */
+body[data-radar-view="bio"]{background:#170d14;color:#f6e8ed;min-height:100vh;color-scheme:dark}
+body[data-radar-view="bio"] .mark{background:linear-gradient(135deg,#9c465f,#e18ca3);color:#280e1a}
+body[data-radar-view="bio"] .eyebrow{color:#e5a1b9}
+body[data-radar-view="bio"] h1 span{color:#ed8ba9!important}
+body[data-radar-view="bio"] .hero p{color:#ccadbb}
+body[data-radar-view="bio"] .stat,
+body[data-radar-view="bio"] .toolbar,
+body[data-radar-view="bio"] .table-wrap,
+body[data-radar-view="bio"] .bio-topics{background:#261721;border-color:#583343}
+body[data-radar-view="bio"] .stat:after{background:#a64b6922}
+body[data-radar-view="bio"] .stat .lbl,
+body[data-radar-view="bio"] .stat .sub,
+body[data-radar-view="bio"] .muted,
+body[data-radar-view="bio"] .tiny.muted{color:#c9a6b7}
+body[data-radar-view="bio"] .radar-tab{background:#261721;color:#c7acb9;border-color:#5d3949}
+body[data-radar-view="bio"] .radar-tab[data-view="bio"].active{background:#723249;border-color:#df829c;color:#fff0f5}
+body[data-radar-view="bio"] .quarter-banner{background:#2c1824;border-color:#69384c;color:#f1dce5}
+body[data-radar-view="bio"] .quarter-banner strong{color:#ffd2df}
+body[data-radar-view="bio"] .warning{background:#332021;border-color:#82505c;color:#f3ced7}
+body[data-radar-view="bio"] .warning strong{color:#ffdae3}
+body[data-radar-view="bio"] .search,
+body[data-radar-view="bio"] .sel,
+body[data-radar-view="bio"] .pill,
+body[data-radar-view="bio"] .topic-buttons button{background:#2a1925;border-color:#61394c;color:#f0d9e2}
+body[data-radar-view="bio"] .pill.active,
+body[data-radar-view="bio"] .topic-buttons button.active{background:#78364d;border-color:#d77b98;color:#fff2f7}
+body[data-radar-view="bio"] .search:focus-visible,
+body[data-radar-view="bio"] button:focus-visible{outline-color:#ee9fb7}
+body[data-radar-view="bio"] th{background:#36202c;color:#dfbbca;border-color:#664151}
+body[data-radar-view="bio"] td{color:#f0dfe6;border-color:#4e2b3b}
+body[data-radar-view="bio"] tr:hover td{background:#3b2330}
+body[data-radar-view="bio"] .stock{color:#fff2f6}
+body[data-radar-view="bio"] .company,
+body[data-radar-view="bio"] .hero-right{color:#caa5b7}
+body[data-radar-view="bio"] .bio-tech{color:#f5e4ed}
+body[data-radar-view="bio"] .bio-tag{background:#4a2537;border-color:#8f4e69;color:#ffe1ea}
+body[data-radar-view="bio"] .bio-dementia{border-color:#bb769d}
+body[data-radar-view="bio"] .bio-aging{border-color:#a47cba}
+body[data-radar-view="bio"] .bio-cancer{border-color:#ce6587}
+body[data-radar-view="bio"] .bio-alopecia{border-color:#a47988}
+body[data-radar-view="bio"] .bio-applied_ai{border-color:#c37894}
+body[data-radar-view="bio"] .symbol{background:#573148;color:#ffdae5}
+body[data-radar-view="bio"] .symbol.priority{background:#73455b;color:#ffdae5}
+body[data-radar-view="bio"] .symbol.hold{background:#653c3c;color:#ffc7be}
+body[data-radar-view="bio"] .detail{background:#261721;border-color:#694052}
+body[data-radar-view="bio"] .detail-toolbar{background:#2a1925f2;border-color:#613748}
+body[data-radar-view="bio"] .block{border-color:#633d50}
+body[data-radar-view="bio"] .fact{background:#392331}
+body[data-radar-view="bio"] .linkbtn{background:#573248;border-color:#9a6179;color:#ffe0ec}
+body[data-radar-view="bio"] a{color:#ffb4ce}
+body[data-radar-view="bio"] .footer{color:#c2a0b0}
+body[data-radar-view="bio"] .market-chart{background:#251820;border-color:#704758}
 </style>
 </head>
 <body>
@@ -186,6 +240,10 @@ function renderQuarter(q){
 function applyView(next,changeUrl){
  if(next!=='tech'&&next!=='bio')return;
  view=next;selected='ALL';
+ document.body.dataset.radarView=next;
+ var themeMeta=document.querySelector('meta[name="theme-color"]');
+ if(themeMeta)themeMeta.content=next==='bio'?'#170d14':'#101723';
+
  el('bio').value=next==='bio'?'QUALIFIED_BIO':'NON_BIO';
  el('tech-table').hidden=next==='bio';el('bio-table').hidden=next==='tech';el('bio-topics').hidden=next==='tech';
  el('page-title').innerHTML=next==='bio'?'바이오 혁신주 레이더<span style="color:#83aaff">.</span>':'기술혁신주 레이더<span style="color:#83aaff">.</span>';
