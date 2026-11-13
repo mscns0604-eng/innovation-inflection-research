@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {scoreRange,parseForm4,parseLatestYahooClose} from '../dist/worker.mjs';
+import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
  const r=scoreRange({});
@@ -136,4 +136,54 @@ test('latest close remains visible in narrow-screen comparison',()=>{
  const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
  assert.equal(html.includes('th:nth-child(8),td:nth-child(8){display:none}'),false);
  assert.equal(html.includes('th:nth-child(11),td:nth-child(11){display:none}'),true);
+});
+
+test('quarter is based on US/Eastern calendar, not Korea or UTC',()=>{
+ assert.equal(quarterFor(new Date('2027-01-01T02:00:00Z')),'2026Q4');
+ assert.equal(quarterFor(new Date('2027-01-01T06:00:00Z')),'2027Q1');
+ assert.equal(quarterFor(new Date('2026-04-01T05:00:00Z')),'2026Q2');
+ assert.equal(previousQuarter('2027Q1'),'2026Q4');
+ assert.equal(previousQuarter('2026Q4'),'2026Q3');
+ assert.throws(()=>previousQuarter('2026Q5'),/INVALID_QUARTER/);
+});
+test('invalid research quarter is rejected before database read',async()=>{
+ const db={prepare(){throw new Error('DB_SHOULD_NOT_BE_QUERIED')}};
+ const r=await worker.fetch(new Request('https://iir.example/api/candidates?quarter=2026Q4%27%20OR%201%3D1'),{DB:db});
+ assert.equal(r.status,400);
+ const r2=await worker.fetch(new Request('https://iir.example/api/quarter?quarter=oops'),{DB:db});
+ assert.equal(r2.status,400);
+});
+test('quarter API returns counts and explicit no-hold rollover rule',async()=>{
+ const db={prepare(sql){
+  return {bind(){return {first:async()=>({quarter_id:'2026Q4',start_date:'2026-10-01',end_date:'2026-12-31'}),all:async()=>({results: sql.includes('GROUP BY')?[{track:'BIO',origin:'LEGACY_SEED',review_status:'RESEARCHING',n:2}]:[{quarter_id:'2026Q4'}]})}}};
+ }};
+ const r=await worker.fetch(new Request('https://iir.example/api/quarter?quarter=2026Q4'),{DB:db});
+ assert.equal(r.status,200);
+ const data=await r.json();
+ assert.equal(data.view_quarter,'2026Q4');
+ assert.equal(data.separate_hold_list,false);
+ assert.equal(data.totals[0].n,2);
+ assert.equal(data.discovery_automation,'NOT_CONFIGURED');
+});
+test('bio and tech tabs each have one table and topic-specific controls',()=>{
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.equal((html.match(/id="radar-nav"/g)||[]).length,1);
+ assert.equal((html.match(/id="tech-table"/g)||[]).length,1);
+ assert.equal((html.match(/id="bio-table"/g)||[]).length,1);
+ assert.equal((html.match(/id="bio-rows"/g)||[]).length,1);
+ for(const name of ['DEMENTIA','AGING','CANCER','ALOPECIA','APPLIED_AI']){
+  assert.match(html,new RegExp('data-topic="'+name+'"'));
+ }
+ assert.equal((html.match(/function renderBio\(\)/g)||[]).length,1);
+ assert.equal((html.match(/function applyView\(/g)||[]).length,1);
+ assert.match(html,/wireGridRows\(el\('bio-rows'\)\)/);
+ assert.match(html,/quarter_only=1/);
+ assert.match(html,/임상\/연구 단계 원문 검증 전/);
+});
+test('quarter rollover only carries non-excluded companies in bounded batches',()=>{
+ const code=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ assert.match(code,/old\.review_status IN \('RESEARCHING','CARRY_FORWARD'\)/);
+ assert.match(code,/LIMIT \?\"\)\.bind\(id,prev,id,MAX_QUARTER_CARRY\)/);
+ assert.match(code,/NOT EXISTS\(SELECT 1 FROM research_quarter_entries newer/);
+ assert.doesNotMatch(code,/old\.review_status IN \([^)]*'EXCLUDED'/);
 });
