@@ -114,7 +114,7 @@ async function candidateDetail(db,ticker){
  if(!validTicker(ticker))return json({error:'INVALID_TICKER'},400);
  const c=await db.prepare('SELECT * FROM companies WHERE ticker=?').bind(ticker).first();
  if(!c)return json({error:'NOT_FOUND'},404);
- const [filings,scores,events,signals,trades,prices,assets,topics,quarterHistory,bioEvents]=await Promise.all([
+ const [filings,scores,events,signals,trades,prices,assets,topics,quarterHistory,bioEvents,proofs]=await Promise.all([
   db.prepare('SELECT accession_number,filing_type,accepted_at_utc,source_url,parse_status FROM filings WHERE company_ticker=? ORDER BY accepted_at_utc DESC LIMIT 25').bind(ticker).all(),
   db.prepare('SELECT * FROM score_snapshots WHERE company_ticker=? ORDER BY asof_utc DESC LIMIT 15').bind(ticker).all(),
   db.prepare('SELECT * FROM catalysts WHERE company_ticker=? ORDER BY target_start LIMIT 20').bind(ticker).all(),
@@ -124,9 +124,10 @@ async function candidateDetail(db,ticker){
   db.prepare('SELECT id,asset_name,modality,asset_kind,phase_label,phase_verified,evidence_level,source_url,checked_at_utc FROM bio_assets WHERE company_ticker=? ORDER BY id LIMIT 30').bind(ticker).all(),
   db.prepare('SELECT topic_code,evidence_level,source_url,note FROM bio_company_topics WHERE company_ticker=? ORDER BY topic_code').bind(ticker).all(),
   db.prepare('SELECT quarter_id,track,origin,review_status,carried_from_quarter,next_check_date,next_check_trigger,decision_reason,last_reviewed_at_utc FROM research_quarter_entries WHERE company_ticker=? ORDER BY quarter_id DESC LIMIT 12').bind(ticker).all(),
-  db.prepare('SELECT asset_id,event_kind,description,target_start,target_end,date_confidence,outcome,source_url FROM bio_milestones WHERE company_ticker=? ORDER BY target_start LIMIT 30').bind(ticker).all()
+  db.prepare('SELECT asset_id,event_kind,description,target_start,target_end,date_confidence,outcome,source_url FROM bio_milestones WHERE company_ticker=? ORDER BY target_start LIMIT 30').bind(ticker).all(),
+  db.prepare('SELECT title,url,source_type,event_date,published_at_utc,claim_type FROM evidence WHERE company_ticker=? ORDER BY event_date DESC LIMIT 15').bind(ticker).all()
  ]);
- return json({company:c,filings:filings.results,scores:(scores.results||[]).map(s=>({...s,...scoreRange(s)})),catalysts:events.results,signals:signals.results,insider_trades:trades.results||[],market_prices:prices.results||[],bio_assets:assets.results||[],bio_topics:topics.results||[],bio_milestones:bioEvents.results||[],research_quarters:quarterHistory.results||[],rubric_version:RUBRIC_VERSION});
+ return json({company:c,filings:filings.results,scores:(scores.results||[]).map(s=>({...s,...scoreRange(s)})),catalysts:events.results,signals:signals.results,insider_trades:trades.results||[],market_prices:prices.results||[],bio_assets:assets.results||[],bio_topics:topics.results||[],bio_milestones:bioEvents.results||[],research_quarters:quarterHistory.results||[],evidence:proofs.results||[],rubric_version:RUBRIC_VERSION});
 }
 async function getStatus(db,env){
  const [s,m,summary]=await Promise.all([
