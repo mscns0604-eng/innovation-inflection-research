@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b1020">
+<meta name="description" content="기술혁신주, 바이오, 경매 레이더와 연구 자료를 하나의 주소에서 관리하는 개인 업무 포털.">
+<title>WORKSPACE | 통합 포털</title>
+<style>
+:root{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",Inter,system-ui,-apple-system,sans-serif;font-size:14px;color:#ecf3ff;background:#0a101b;font-synthesis:none;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;background:radial-gradient(ellipse 48% 25% at 94% 4%,rgba(56,91,161,.17),transparent 80%),radial-gradient(ellipse 34% 23% at 4% 28%,rgba(52,109,131,.1),transparent 80%),#0a101b;min-height:100vh}
+button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #8cbeff;outline-offset:3px}
+[hidden]{display:none!important}
+.icon{width:18px;height:18px;display:inline-block;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.container{width:min(1220px,calc(100% - 64px));margin:0 auto}
+.topbar{border-bottom:1px solid #ffffff12;background:#0c1421b8;backdrop-filter:blur(20px)}
+.topbar-in{display:flex;align-items:center;justify-content:space-between;height:81px;gap:16px}
+.brand{display:inline-flex;align-items:center;gap:12px}
+.brand-mark{width:37px;height:37px;display:grid;place-items:center;background:linear-gradient(135deg,#397bb6,#7e84ed);border:1px solid #779ddd75;border-radius:11px;box-shadow:0 5px 20px #254c9640}
+.brand-mark .icon{width:22px;height:22px;color:#f1f6ff}
+.brand-name{font-size:17px;letter-spacing:-.5px;font-weight:850}
+.brand-small{font-size:10px;color:#7993b9;font-weight:750;letter-spacing:2.1px;margin-left:7px}
+.topbar-meta{display:flex;align-items:center;gap:16px;color:#8da1ba;font-size:12px}
+.live-mark{display:inline-flex;gap:7px;align-items:center;color:#adc6dd;border:1px solid #33465f;border-radius:40px;padding:8px 11px}
+.live-dot{width:7px;height:7px;background:#79c5b6;box-shadow:0 0 0 4px #79c5b619;border-radius:50%}
+.k-date{color:#8298af}
+.hero{padding:74px 0 51px;display:flex;justify-content:space-between;align-items:flex-end;gap:28px}
+.hero-eyebrow{display:flex;align-items:center;gap:9px;color:#8ca8d1;font-size:11px;font-weight:790;letter-spacing:2.7px;margin-bottom:19px}
+.hero-eyebrow:before{content:"";height:1px;background:#6c92c2;width:23px}
+.hero h1{font-size:clamp(39px,5vw,66px);line-height:1.19;letter-spacing:-3.4px;font-weight:850;margin:0}
+.hero h1 em{font-style:normal;background:linear-gradient(110deg,#8bacff 10%,#b2c6ff 45%,#a0dddb 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:20px 0 0;max-width:560px;color:#91a4bd;font-size:14px;line-height:1.8}
+.hero-ornament{width:250px;height:148px;flex-shrink:0;position:relative;border:1px solid #384b6573;border-radius:19px;background:linear-gradient(150deg,#172338d9,#0f1828d9);transform:rotate(-4deg);box-shadow:15px 19px 54px #0004;overflow:hidden}
+.hero-ornament:before{content:"";position:absolute;inset:0;background:linear-gradient(transparent 0 96%,#ffffff08 96%),linear-gradient(90deg,transparent 0 96%,#ffffff08 96%);background-size:23px 23px;opacity:.8}
+.hero-ornament .orn-orb{position:absolute;right:-11px;top:-40px;width:145px;height:145px;border-radius:100%;background:radial-gradient(circle,#7b8de7a0,#3a477e33 55%,transparent 75%)}
+.hero-ornament .orn-mini{position:absolute;left:18px;top:21px;font-size:10px;letter-spacing:2px;color:#718eb5;font-weight:800}
+.hero-ornament .orn-number{position:absolute;left:21px;top:44px;font-size:54px;font-weight:840;letter-spacing:-4px;color:#d6e4ff}
+.hero-ornament .orn-tail{position:absolute;left:25px;bottom:18px;display:flex;align-items:center;gap:7px;color:#8db2d7;font-size:10px}
+.hero-ornament .orn-tail:before{content:"";width:6px;height:6px;background:#69c8bc;border-radius:50%}
+.workspace-bar{background:#101a2a;border:1px solid #2c3c55;border-radius:15px;display:flex;gap:14px;align-items:center;padding:12px;flex-wrap:wrap;box-shadow:0 13px 36px #00000018}
+.search-wrap{position:relative;flex:1;min-width:230px}
+.search-wrap .icon{position:absolute;left:17px;top:50%;transform:translateY(-50%);color:#7b96b7}
+.search-input{width:100%;height:45px;background:#192639;border:1px solid #31435e;outline:none;border-radius:10px;padding:0 77px 0 47px;color:#f0f6ff;font-size:13px}
+.search-input::placeholder{color:#758ba7}
+.search-shortcut{position:absolute;right:15px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;padding:4px 6px;border-radius:5px;background:#27374d;border:1px solid #435471;color:#9eafc6;pointer-events:none}
+.search-input:focus{border-color:#739bcc}
+.add-button{height:45px;display:inline-flex;align-items:center;gap:8px;justify-content:center;padding:0 19px;background:#d9e8ff;border:none;border-radius:10px;color:#13253d;font-weight:800;font-size:12px;white-space:nowrap}
+.add-button:hover{background:#fff}
+.add-button .icon{width:16px;height:16px}
+.filters{display:flex;align-items:center;gap:7px;padding:22px 0 13px;flex-wrap:wrap}
+.filter-btn{background:transparent;color:#869bb7;border:1px solid transparent;border-radius:8px;padding:9px 15px;font-weight:650;font-size:12px}
+.filter-btn:hover{color:#dfebff;background:#1b293a}
+.filter-btn.active{color:#d5e8ff;background:#1e3047;border-color:#3e5c7c}
+.filter-count{font-size:11px;font-variant-numeric:tabular-nums;opacity:.65;margin-left:5px}
+.filter-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.text-btn{font-size:12px;background:transparent;border:1px solid #304159;color:#a7bbd3;border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:6px}
+.text-btn:hover{border-color:#607c9e;color:#fff}
+.text-btn .icon{width:15px;height:15px}
+.section{margin:16px 0 34px}
+.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.section-heading-left{display:flex;gap:11px;align-items:center}
+.section-marker{width:3px;height:22px;background:#659be6;border-radius:4px}
+.section[data-section="test"] .section-marker{background:#a8a2b8}
+.section[data-section="docs"] .section-marker{background:#83c4bc}
+.section[data-section="custom"] .section-marker{background:#e0b779}
+.section-heading h2{font-size:16px;letter-spacing:-.2px;font-weight:780;margin:0}
+.section-caption{font-size:11px;color:#7e94ae}
+.section-note{font-size:11px;color:#7890aa}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.card{position:relative;border-radius:17px;background:#121d2d;border:1px solid #32445d;min-height:245px;padding:22px;display:flex;flex-direction:column;gap:16px;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;overflow:hidden}
+.card:before{content:"";position:absolute;top:0;right:0;width:160px;height:135px;background:radial-gradient(ellipse at top right,var(--glow,#5472a61e),transparent 75%);pointer-events:none}
+.card:hover{transform:translateY(-3px);border-color:var(--edge,#6882b0);box-shadow:0 18px 48px #0005}
+.card[data-visual="tech"]{--accent:#a1c8ff;--accentBg:#243d61;--edge:#6b97d5;--glow:#487bd744}
+.card[data-visual="bio"]{--accent:#ffb3cd;--accentBg:#522c41;--edge:#c56d91;--glow:#ab46674d;background:#251824;border-color:#663e52}
+.card[data-visual="auction"]{--accent:#c0adff;--accentBg:#383354;--edge:#927fd7;--glow:#705cca3c}
+.card[data-visual="test"]{--accent:#b3b8cc;--accentBg:#303748;--edge:#738099;--glow:#5c647c33}
+.card[data-visual="docs"]{--accent:#9de7d9;--accentBg:#24453f;--edge:#6bb7aa;--glow:#417d7040}
+.card[data-visual="custom"]{--accent:#ffdfa8;--accentBg:#54422b;--edge:#d0a76b;--glow:#a7824540}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;position:relative}
+.card-icon{display:flex;align-items:center;justify-content:center;border:1px solid #ffffff17;border-radius:13px;background:var(--accentBg);color:var(--accent);width:49px;height:49px}
+.card-icon .icon{width:25px;height:25px}
+.pin-btn{width:31px;height:31px;border-radius:9px;border:1px solid #34475f;background:#1a293c;color:#6884a3;display:grid;place-items:center;transition:all .15s ease}
+.pin-btn:hover{color:#f1dd9e;border-color:#a38957}
+.pin-btn.pinned{color:#f6d58c;background:#493b2f;border-color:#a58a54}
+.pin-btn .icon{width:17px;height:17px}
+.card-body{position:relative;flex:1}
+.card-code{font-size:10px;text-transform:uppercase;letter-spacing:1.7px;font-weight:760;color:var(--accent);opacity:.95}
+.card h3{font-size:20px;line-height:1.3;letter-spacing:-.8px;margin:7px 0 7px;font-weight:830}
+.card-desc{font-size:12px;line-height:1.7;color:#9cacc1;margin:0;min-height:41px}
+.card[data-visual="bio"] .card-desc{color:#c9a6b8}
+.card-bottom{border-top:1px solid #ffffff12;display:flex;align-items:center;justify-content:space-between;padding-top:13px;gap:8px;position:relative}
+.card-category{display:flex;align-items:center;gap:6px;font-size:11px;color:#8095b0}
+.card-category:before{content:"";width:6px;height:6px;border:1px solid currentColor;border-radius:50%}
+.open-link{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:770;color:var(--accent);padding:6px 0 6px 10px}
+.open-link:hover{text-decoration:underline;text-underline-offset:4px}
+.open-link .icon{width:15px;height:15px}
+.delete-btn{position:absolute;top:21px;right:64px;border:none;background:transparent;color:#8b9bb0;padding:7px;border-radius:8px}
+.delete-btn:hover{background:#4b2733;color:#ffb3bd}
+.delete-btn .icon{width:16px;height:16px}
+.empty{border:1px dashed #354864;border-radius:15px;padding:48px 25px;text-align:center;background:#101a29;color:#9daec4}
+.empty .icon{width:30px;height:30px;color:#6c88a9;margin-bottom:12px}
+.empty h3{font-size:15px;margin:0 0 6px;color:#d4e0ef}
+.empty p{margin:0;font-size:12px;line-height:1.8}
+.footer{border-top:1px solid #ffffff16;padding:25px 0 36px;display:flex;gap:20px;align-items:center;justify-content:space-between;color:#798da6;font-size:11px;line-height:1.8}
+.footer strong{color:#b2c6db}
+.footer a{color:#a6bad8}
+.pill-outline{display:inline-flex;align-items:center;border:1px solid #354a61;border-radius:40px;padding:6px 11px;color:#8eaac9;font-size:11px;gap:6px}
+.portal-dialog{border:1px solid #3e5572;background:#111d2e;color:#eff5fe;border-radius:18px;width:min(465px,calc(100% - 32px));padding:28px;box-shadow:0 25px 100px #0009}
+.portal-dialog::backdrop{background:#050912c9;backdrop-filter:blur(4px)}
+.dialog-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px}
+.dialog-top h2{margin:0;font-size:20px;letter-spacing:-.6px}
+.dialog-top p{font-size:12px;line-height:1.6;color:#8c9eb6;margin:6px 0 0}
+.dismiss{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:#213048;border:1px solid #3d516d;color:#bdcadb}
+.dialog-field{display:flex;flex-direction:column;gap:7px;margin:0 0 16px}
+.dialog-field label{font-size:12px;color:#cbd9ee;font-weight:670}
+.dialog-field input,.dialog-field textarea{width:100%;padding:12px 13px;border:1px solid #40546d;border-radius:9px;background:#1a283c;color:#edf4ff;outline:none;font-size:13px}
+.dialog-field input:focus,.dialog-field textarea:focus{border-color:#93b8ec}
+.dialog-field textarea{resize:vertical;min-height:67px}
+.dialog-tip{font-size:11px;color:#9eb3cd;line-height:1.6;background:#1c2c41;border-radius:9px;padding:12px;margin:0 0 18px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:9px}
+.cancel-btn{border:1px solid #42556e;color:#d3dfed;background:#223048;padding:12px 16px;border-radius:9px}
+.save-btn{border:none;background:#c8ddfb;color:#17263d;font-weight:800;padding:12px 18px;border-radius:9px}
+.form-error{color:#ffb3c3;font-size:12px;min-height:16px;margin:0 0 10px}
+.toast{position:fixed;left:50%;bottom:23px;transform:translate(-50%,30px);z-index:100;background:#25374f;border:1px solid #597494;color:#eaf3ff;border-radius:10px;padding:12px 18px;font-size:12px;box-shadow:0 16px 40px #0007;opacity:0;pointer-events:none;transition:transform .16s ease,opacity .16s ease}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:1040px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-ornament{width:215px}}
+@media(max-width:660px){.container{width:min(100% - 32px,1220px)}.topbar-in{height:68px}.brand-small,.k-date{display:none}.hero{padding:51px 0 34px}.hero h1{letter-spacing:-2px}.hero-ornament{display:none}.hero p{font-size:13px}.workspace-bar{padding:10px}.search-wrap{min-width:100%}.add-button{width:100%}.filters{padding-top:17px}.filter-btn{padding:9px 10px;font-size:11px}.filter-actions{width:100%;margin-left:0;justify-content:flex-end}.section-heading{flex-wrap:wrap}.cards{grid-template-columns:1fr}.card{min-height:220px}.footer{flex-direction:column;align-items:flex-start}.portal-dialog{padding:22px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="7.3"/><path d="m16.2 16.2 4.4 4.4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-external" viewBox="0 0 24 24"><path d="M13 5h6v6M19 5l-9 9"/><path d="M18 13v6H5V6h6"/></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></symbol>
+<symbol id="i-dna" viewBox="0 0 24 24"><path d="M5 3c0 10 14 8 14 18M19 3C19 13 5 11 5 21M6 7h12M8 12h8M6 17h12"/></symbol>
+<symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V7l8-4 8 4v14M4 9h16M8 13h2M14 13h2M8 17h2M14 17h2M10 21v-3h4v3"/></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6zM9 4v14M15 6v14"/></symbol>
+<symbol id="i-street" viewBox="0 0 24 24"><path d="M6 21 9 3h6l3 18M10 14h4M11 8h2M4 21h16"/></symbol>
+<symbol id="i-git" viewBox="0 0 24 24"><path d="m12 2 10 10-10 10L2 12 12 2zM8 9v7M8 9a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm0 7a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zM9.5 10.3 15 15v3"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.75 5.6 6.2.9-4.5 4.4 1.05 6.1L12 17.1l-5.5 2.9 1.05-6.1-4.5-4.4 6.2-.9L12 3z"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3M7 8l5-5 5 5M4 15v5h16v-5"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v13M7 11l5 5 5-5M4 18v3h16v-3"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 .1l2-2a5 5 0 0 0-7-7l-2 2M14 10a5 5 0 0 0-7-.1l-2 2a5 5 0 0 0 7 7l2-2"/></symbol>
+</svg>
+<header class="topbar"><div class="container topbar-in">
+<a href="/" class="brand" aria-label="포털 홈"><span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span><span class="brand-name">WORKSPACE <span class="brand-small">PORTAL</span></span></a>
+<div class="topbar-meta"><span class="k-date" id="date-label"></span><span class="live-mark"><span class="live-dot"></span>통합 바로가기</span></div>
+</div></header>
+<main class="container">
+<section class="hero" aria-labelledby="hero-heading"><div>
+<div class="hero-eyebrow">YOUR DIGITAL WORKSPACE</div>
+<h1 id="hero-heading">필요한 모든 도구를,<br><em>한곳에서.</em></h1>
+<p>따로 저장해 두었던 웹페이지 주소들을 하나로 모았습니다.<br>투자 레이더부터 경매 정보, 개발 자료까지 바로 이동하세요.</p>
+</div><div class="hero-ornament" aria-hidden="true"><span class="orn-orb"></span><span class="orn-mini">WORKSPACE / LINKS</span><span class="orn-number" id="visual-count">06<span style="font-size:19px;color:#86a3d1;letter-spacing:-1px;margin-left:5px">TOOLS</span></span><span class="orn-tail">ONE LINK, ALL YOUR TOOLS</span></div></section>
+<div class="workspace-bar" role="search"><div class="search-wrap">
+<svg class="icon"><use href="#i-search"/></svg>
+<input id="search" class="search-input" type="search" placeholder="서비스 이름, 키워드로 검색" aria-label="서비스 검색" autocomplete="off" maxlength="100">
+<span class="search-shortcut">Ctrl K</span></div>
+<button class="add-button" id="add-link" type="button"><svg class="icon"><use href="#i-plus"/></svg>내 링크 추가</button>
+</div>
+<nav class="filters" id="filters" aria-label="서비스 분류">
+<button class="filter-btn active" data-filter="all" type="button">전체 <span class="filter-count" id="count-all"></span></button>
+<button class="filter-btn" data-filter="invest" type="button">투자 레이더</button>
+<button class="filter-btn" data-filter="realestate" type="button">부동산·경매</button>
+<button class="filter-btn" data-filter="test" type="button">테스트 도구</button>
+<button class="filter-btn" data-filter="docs" type="button">개발·자료</button>
+<button class="filter-btn" data-filter="custom" type="button">내 링크</button>
+<div class="filter-actions"><button class="text-btn" type="button" id="only-pinned"><svg class="icon"><use href="#i-star"/></svg> 즐겨찾기만</button></div>
+</nav>
+<div id="sections" aria-live="polite"><div class="empty">링크 목록 불러오는 중…</div></div>
+<div class="footer"><span><strong>WORKSPACE PORTAL</strong> · 기본 바로가기는 모든 기기에서 같은 주소로 제공됩니다.<br>‘내 링크’와 즐겨찾기는 이 브라우저에만 보관됩니다.</span>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="text-btn" id="export-custom" type="button"><svg class="icon"><use href="#i-download"/></svg>내 링크 백업</button><button class="text-btn" id="import-custom" type="button"><svg class="icon"><use href="#i-upload"/></svg>백업 가져오기</button><input type="file" id="import-file" accept=".json,application/json" hidden></div></div>
+</main>
+<dialog id="link-dialog" class="portal-dialog" aria-labelledby="dialog-title">
+<form id="link-form" novalidate>
+<div class="dialog-top"><div><h2 id="dialog-title">내 바로가기 추가</h2><p>자주 쓰는 사이트를 이 브라우저에 보관합니다.</p></div><button type="button" id="close-dialog" class="dismiss" aria-label="닫기"><svg class="icon"><use href="#i-close"/></svg></button></div>
+<div class="dialog-field"><label for="link-title">이름 <span style="color:#e4b6bf">*</span></label><input id="link-title" name="title" maxlength="60" required placeholder="예: 사내 출근부"></div>
+<div class="dialog-field"><label for="link-url">웹 주소 <span style="color:#e4b6bf">*</span></label><input id="link-url" name="url" type="url" maxlength="1800" required inputmode="url" placeholder="https://example.com"></div>
+<div class="dialog-field"><label for="link-description">설명 (선택)</label><textarea id="link-description" name="description" maxlength="150" rows="2" placeholder="이 사이트에서 하는 일"></textarea></div>
+<p class="dialog-tip">회사에서 공통으로 사용하는 서비스 링크는 포털 설정 파일로 관리합니다. 여기서 추가하는 개인 링크는 기기 간 자동 동기화되지 않으며, 백업 파일로 옮길 수 있습니다.</p>
+<div class="form-error" id="form-error" role="alert"></div>
+<div class="dialog-actions"><button class="cancel-btn" id="cancel-dialog" type="button">취소</button><button class="save-btn" type="submit">바로가기 저장</button></div>
+</form></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+'use strict';
+const catalog=__PORTAL_LINKS__;
+const categories=[{id:'invest',name:'투자 레이더',note:'미국 혁신기업을 탐색하는 도구'},{id:'realestate',name:'부동산·경매',note:'경매 물건 분석과 입지 확인'},{id:'test',name:'테스트 도구',note:'개발 중인 기능을 살펴보는 미리보기'},{id:'docs',name:'개발·자료',note:'연구 기준과 프로그램 소스 관리'},{id:'custom',name:'내 링크',note:'이 브라우저에 저장한 개인 바로가기'}];
+const keyCustom='workspace_portal_custom_v1',keyPins='workspace_portal_pins_v1';
+const $=id=>document.getElementById(id);
+const iconMap=new Set(['grid','search','plus','external','trend','dna','building','map','street','git','star','close','trash','upload','download','link']);
+let filter='all',pinnedOnly=false,custom=[],pins=new Set(['iir-tech','iir-bio','auction-radar']),storageAvailable=true,toastTimer=null;
+function svgIcon(name){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','icon');svg.setAttribute('aria-hidden','true');const use=document.createElementNS('http://www.w3.org/2000/svg','use');use.setAttribute('href','#i-'+(iconMap.has(name)?name:'link'));svg.appendChild(use);return svg}
+function safeUrl(raw){try{const u=new URL(String(raw));if(!['https:','http:'].includes(u.protocol)||u.username||u.password||u.href.length>1800)return null;return u.href}catch{return null}}
+function read(key,fall){try{const x=localStorage.getItem(key);return x?JSON.parse(x):fall}catch{storageAvailable=false;return fall}}
+function write(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch{storageAvailable=false;return false}}
+function normalizeCustom(items){if(!Array.isArray(items))return [];return items.slice(0,50).map(x=>({id:typeof x.id==='string'&&/^personal-[a-zA-Z0-9-]{4,80}$/.test(x.id)?x.id:'personal-'+Math.random().toString(36).slice(2,10),title:String(x.title||'').trim().slice(0,60),href:safeUrl(x.href),description:String(x.description||'').trim().slice(0,150)})).filter(x=>x.title&&x.href).filter((x,i,a)=>a.findIndex(y=>y.href===x.href)===i).map(x=>({...x,category:'custom',visual:'custom',environment:'local',subtitle:'PERSONAL LINK',label:'내 링크',icon:'link',order:100}))}
+const saved=read(keyCustom,[]);custom=normalizeCustom(saved);
+const storedPins=read(keyPins,null);if(Array.isArray(storedPins))pins=new Set(storedPins.filter(x=>typeof x==='string'&&x.length<100).slice(0,100));
+function persist(){if(!write(keyCustom,custom))toast('이 브라우저에서는 저장 기능이 제한됩니다.')}
+function savePins(){if(!write(keyPins,[...pins]))toast('즐겨찾기를 저장하지 못했습니다.')}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
+function allItems(){return [...(Array.isArray(catalog.items)?catalog.items:[]),...custom].filter(x=>safeUrl(x.href)).sort((a,b)=>(a.order||999)-(b.order||999))}
+function node(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=String(txt);return e}
+function createCard(item){const card=node('article','card');card.dataset.visual=['tech','bio','auction','test','docs','custom'].includes(item.visual)?item.visual:'docs';
+const top=node('div','card-top'),sym=node('span','card-icon'),pin=node('button','pin-btn'+(pins.has(item.id)?' pinned':''));
+sym.appendChild(svgIcon(item.icon));pin.type='button';pin.dataset.pin=item.id;pin.setAttribute('aria-label',(pins.has(item.id)?'즐겨찾기 해제: ':'즐겨찾기 등록: ')+item.title);pin.appendChild(svgIcon('star'));top.append(sym,pin);
+if(item.environment==='local'){const del=node('button','delete-btn');del.type='button';del.dataset.delete=item.id;del.setAttribute('aria-label','링크 삭제: '+item.title);del.appendChild(svgIcon('trash'));card.appendChild(del)}
+const body=node('div','card-body');body.append(node('div','card-code',item.subtitle||item.category),node('h3','',item.title),node('p','card-desc',item.description||'바로가기'));
+const foot=node('div','card-bottom'),cat=node('span','card-category',item.environment==='preview'?'기능 테스트 · 미리보기':item.environment==='resource'?'기준서 · 연구자료':item.environment==='local'?'이 기기에만 저장':'운영 서비스'),a=node('a','open-link');
+a.href=safeUrl(item.href);a.target='_blank';a.rel='noopener noreferrer';a.title=item.title+' 새 탭에서 열기';a.append(node('span','', '바로가기'),svgIcon('external'));foot.append(cat,a);card.append(top,body,foot);return card}
+function render(){const q=$('search').value.trim().toLocaleLowerCase('ko-KR'),all=allItems();const visible=all.filter(x=>(filter==='all'||x.category===filter)&&(!pinnedOnly||pins.has(x.id))&&(!q||[x.title,x.subtitle,x.description,x.label,x.category].some(t=>String(t||'').toLocaleLowerCase('ko-KR').includes(q))));
+$('count-all').textContent=String(all.length);$('visual-count').innerHTML='';$('visual-count').append(document.createTextNode(String(all.length).padStart(2,'0')));const small=node('span','','TOOLS');small.style.cssText='font-size:19px;color:#86a3d1;letter-spacing:-1px;margin-left:5px';$('visual-count').appendChild(small);
+const root=$('sections');root.replaceChildren();
+for(const group of categories){const chunk=visible.filter(x=>x.category===group.id);if(!chunk.length)continue;const section=node('section','section');section.dataset.section=group.id;const heading=node('div','section-heading'),left=node('div','section-heading-left'),mark=node('span','section-marker'),title=node('h2','',group.name+'  '),count=node('span','section-caption',String(chunk.length).padStart(2,'0')),note=node('span','section-note',group.note);left.append(mark,title,count);heading.append(left,note);const grid=node('div','cards');for(const x of chunk)grid.appendChild(createCard(x));section.append(heading,grid);root.appendChild(section)}
+if(!root.childElementCount){const empty=node('div','empty');empty.append(svgIcon('search'),node('h3','',q?'검색 결과가 없습니다':'표시할 링크가 없습니다'),node('p','',q?'다른 검색어를 사용하거나 필터를 변경하세요.':'즐겨찾기를 추가하거나 내 링크를 등록하세요.'));root.appendChild(empty)}
+$('only-pinned').style.background=pinnedOnly?'#253b57':'transparent';$('only-pinned').setAttribute('aria-pressed',String(pinnedOnly));
+$('filters').querySelectorAll('[data-filter]').forEach(b=>{b.classList.toggle('active',b.dataset.filter===filter);b.setAttribute('aria-pressed',String(b.dataset.filter===filter))});
+}
+$('date-label').textContent=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date());
+$('search').addEventListener('input',render);
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('search').focus();$('search').select()}if(e.key==='Escape'&&document.activeElement===$('search')){$('search').value='';render()}});
+$('filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(b){filter=b.dataset.filter;render()}});
+$('only-pinned').addEventListener('click',()=>{pinnedOnly=!pinnedOnly;render()});
+$('sections').addEventListener('click',e=>{
+ const btn=e.target.closest('[data-pin],[data-delete]');if(!btn)return;
+ if(btn.dataset.pin){const id=btn.dataset.pin; pins.has(id)?pins.delete(id):pins.add(id);savePins();render();return}
+ if(btn.dataset.delete){const id=btn.dataset.delete,entry=custom.find(x=>x.id===id);if(!entry)return;if(!confirm('개인 링크 "'+entry.title+'"를 삭제할까요?'))return;custom=custom.filter(x=>x.id!==id);pins.delete(id);persist();savePins();render();toast('개인 링크를 삭제했습니다.')}
+});
+const dialog=$('link-dialog');$('add-link').addEventListener('click',()=>{if(custom.length>=50){toast('내 링크는 최대 50개까지 추가할 수 있습니다.');return}$('link-form').reset();$('form-error').textContent='';dialog.showModal();$('link-title').focus()});
+$('close-dialog').addEventListener('click',()=>dialog.close());$('cancel-dialog').addEventListener('click',()=>dialog.close());
+$('link-form').addEventListener('submit',e=>{e.preventDefault();const title=$('link-title').value.trim(),href=safeUrl($('link-url').value.trim()),description=$('link-description').value.trim();const err=$('form-error');if(!title||title.length>60){err.textContent='이름을 1~60자로 입력하세요.';return}if(!href){err.textContent='http(s) 웹 주소를 올바르게 입력하세요.';return}if(allItems().some(x=>safeUrl(x.href)===href)){err.textContent='이미 등록된 주소입니다.';return}if(custom.length>=50){err.textContent='개인 링크는 최대 50개까지 저장할 수 있습니다.';return}let id='personal-'+Math.random().toString(36).slice(2,10);custom.push(...normalizeCustom([{id,title,href,description}]));persist();dialog.close();filter='custom';pinnedOnly=false;$('search').value='';render();toast('내 링크에 추가했습니다. 이 브라우저에만 저장됩니다.')});
+$('export-custom').addEventListener('click',()=>{const backup={format:'workspace-portal-personal-backup',version:1,created_at:new Date().toISOString(),links:custom.map(({id,title,href,description})=>({id,title,href,description})),pins:[...pins].filter(x=>x.startsWith('personal-'))};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='portal-my-links-backup.json';a.click();URL.revokeObjectURL(u);toast('개인 링크 백업 파일을 만들었습니다.')});
+$('import-custom').addEventListener('click',()=>$('import-file').click());
+$('import-file').addEventListener('change',async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(file.size>128000){toast('백업 파일은 128KB 이하만 지원합니다.');return}try{const parsed=JSON.parse(await file.text());if(parsed.format!=='workspace-portal-personal-backup'||!Array.isArray(parsed.links)||parsed.links.length>50)throw Error('BACKUP_FORMAT_INVALID');const next=normalizeCustom(parsed.links);if(next.length!==parsed.links.length)throw Error('BACKUP_LINK_INVALID');const merged=normalizeCustom([...custom,...next]);custom=merged;const p=Array.isArray(parsed.pins)?parsed.pins.filter(x=>typeof x==='string'&&x.startsWith('personal-')).slice(0,50):[];for(const id of p)if(custom.some(x=>x.id===id))pins.add(id);persist();savePins();render();toast('개인 링크 '+next.length+'개를 불러왔습니다.')}catch{toast('올바른 포털 백업 파일인지 확인해 주세요.')}});
+render();
+})();
+</script>
+</body>
+</html>
