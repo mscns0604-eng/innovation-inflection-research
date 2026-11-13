@@ -69,7 +69,7 @@ async function getQuarterState(db,url){
  if(!/^20\d{2}Q[1-4]$/.test(id))return json({error:'INVALID_QUARTER'},400);
  const [q,counts,available]=await Promise.all([
   db.prepare('SELECT * FROM research_quarters WHERE quarter_id=?').bind(id).first(),
-  db.prepare('SELECT track,origin,review_status,COUNT(*) AS n FROM research_quarter_entries WHERE quarter_id=? GROUP BY track,origin,review_status').bind(id).all(),
+  db.prepare("SELECT q.track,q.origin,q.review_status,COUNT(*) AS n FROM research_quarter_entries q JOIN companies c ON c.ticker=q.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE q.quarter_id=? AND q.review_status<>'EXCLUDED' AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') GROUP BY q.track,q.origin,q.review_status").bind(id).all(),
   db.prepare('SELECT quarter_id FROM research_quarters ORDER BY quarter_id DESC LIMIT 12').all()
  ]);
  return json({current_quarter:current,view_quarter:id,quarter:q||null,totals:counts.results||[],available_quarters:(available.results||[]).map(x=>x.quarter_id),rollover_rule:'NON_EXCLUDED_CARRYOVER',separate_hold_list:false,discovery_automation:'NOT_CONFIGURED',last_checked_at_utc:iso()});
@@ -97,22 +97,22 @@ async function listCandidates(db,url){
  const sort=url.searchParams.get('sort')||'priority';
  if(!ALLOW_SORT[sort])return json({error:'INVALID_SORT'},400);
  const baseWhere=mode==='ALL_ELIGIBLE'?"c.eligible_status IN ('ELIGIBLE','CONDITIONAL')":"c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND c.bio_mode = ?";
- const where=baseWhere+(quarterOnly?" AND qe.quarter_id IS NOT NULL AND qe.review_status <> 'EXCLUDED'":"");
+ const where=baseWhere+" AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' AND lv.primary_exchange IN ('NYSE','NASDAQ')"+(quarterOnly?" AND qe.quarter_id IS NOT NULL AND qe.review_status <> 'EXCLUDED'":"");
  const args=mode==='ALL_ELIGIBLE'?[]:[mode];
  const tradeAggregate=" LEFT JOIN (SELECT f.company_ticker AS ticker, SUM(t.shares) AS buy_shares, SUM(t.shares*t.price_usd) AS buy_cost, MIN(t.price_usd) AS min_buy_price_usd, MAX(t.price_usd) AS max_buy_price_usd, MIN(t.trade_date) AS first_buy_date, MAX(t.trade_date) AS last_buy_date, COUNT(*) AS buy_trade_rows, COUNT(DISTINCT COALESCE(NULLIF(t.reporting_owner_name,''),t.reporting_owner_key)) AS buy_named_owner_count, SUM(CASE WHEN t.verification_status='SECONDARY_P_UNVERIFIED' THEN 1 ELSE 0 END) AS secondary_trade_rows FROM insider_transactions t JOIN filings f ON f.id=t.filing_id WHERE t.code='P' AND t.shares>0 AND t.price_usd>0 GROUP BY f.company_ticker) bt ON bt.ticker=c.ticker";
  const marketJoin=" LEFT JOIN market_snapshots ms ON ms.rowid=(SELECT p.rowid FROM market_snapshots p WHERE p.company_ticker=c.ticker AND p.close_usd>0 ORDER BY p.price_date DESC,p.retrieved_at_utc DESC LIMIT 1)";
  const bioJoin=" LEFT JOIN bio_profiles bp ON bp.company_ticker=c.ticker LEFT JOIN (SELECT company_ticker,GROUP_CONCAT(topic_code,'|') AS bio_tags,MAX(CASE evidence_level WHEN 'PRIMARY_CONFIRMED' THEN 0 ELSE 1 END) AS unverified_topic FROM bio_company_topics GROUP BY company_ticker) btopic ON btopic.company_ticker=c.ticker";
  const quarterJoin=" LEFT JOIN research_quarter_entries qe ON qe.company_ticker=c.ticker AND qe.quarter_id='"+quarter+"'";
- const common=' FROM companies c LEFT JOIN score_snapshots s ON s.id=(SELECT s2.id FROM score_snapshots s2 WHERE s2.company_ticker=c.ticker ORDER BY s2.asof_utc DESC,s2.id DESC LIMIT 1)'+tradeAggregate+marketJoin+bioJoin+quarterJoin+' WHERE '+where;
+ const common=' FROM companies c INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker LEFT JOIN score_snapshots s ON s.id=(SELECT s2.id FROM score_snapshots s2 WHERE s2.company_ticker=c.ticker ORDER BY s2.asof_utc DESC,s2.id DESC LIMIT 1)'+tradeAggregate+marketJoin+bioJoin+quarterJoin+' WHERE '+where;
  const count=await db.prepare('SELECT COUNT(*) n'+common).bind(...args).first();
- const fields='c.*,CASE WHEN bt.buy_shares>0 THEN ROUND(bt.buy_cost/bt.buy_shares,6) ELSE NULL END AS insider_avg_buy_price_usd,bt.min_buy_price_usd,bt.max_buy_price_usd,bt.first_buy_date,bt.last_buy_date,bt.buy_trade_rows,bt.buy_named_owner_count,bt.secondary_trade_rows,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,s.review_rank,s.research_status AS reviewed_research_status,s.entry_risk_status,s.reason_summary AS current_reason_summary,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure,ms.close_usd AS latest_close_usd,ms.price_date AS latest_close_date,ms.source_name AS latest_close_source,ms.retrieved_at_utc AS latest_close_retrieved_at,bp.classification_status AS bio_classification_status,bp.inclusion_basis AS bio_inclusion_basis,btopic.bio_tags,btopic.unverified_topic,(SELECT ba.asset_name FROM bio_assets ba WHERE ba.company_ticker=c.ticker ORDER BY ba.id LIMIT 1) AS bio_lead_asset,(SELECT ba.phase_label FROM bio_assets ba WHERE ba.company_ticker=c.ticker AND ba.phase_verified=1 ORDER BY ba.id LIMIT 1) AS bio_lead_phase,qe.quarter_id AS research_quarter,qe.origin AS quarter_origin,qe.review_status AS quarter_review_status,qe.carried_from_quarter,qe.next_check_date,qe.next_check_trigger';
+ const fields='c.*,CASE WHEN bt.buy_shares>0 THEN ROUND(bt.buy_cost/bt.buy_shares,6) ELSE NULL END AS insider_avg_buy_price_usd,bt.min_buy_price_usd,bt.max_buy_price_usd,bt.first_buy_date,bt.last_buy_date,bt.buy_trade_rows,bt.buy_named_owner_count,bt.secondary_trade_rows,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,s.review_rank,s.research_status AS reviewed_research_status,s.entry_risk_status,s.reason_summary AS current_reason_summary,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure,ms.close_usd AS latest_close_usd,ms.price_date AS latest_close_date,ms.source_name AS latest_close_source,ms.retrieved_at_utc AS latest_close_retrieved_at,bp.classification_status AS bio_classification_status,bp.inclusion_basis AS bio_inclusion_basis,btopic.bio_tags,btopic.unverified_topic,(SELECT ba.asset_name FROM bio_assets ba WHERE ba.company_ticker=c.ticker ORDER BY ba.id LIMIT 1) AS bio_lead_asset,(SELECT ba.phase_label FROM bio_assets ba WHERE ba.company_ticker=c.ticker AND ba.phase_verified=1 ORDER BY ba.id LIMIT 1) AS bio_lead_phase,qe.quarter_id AS research_quarter,qe.origin AS quarter_origin,qe.review_status AS quarter_review_status,qe.carried_from_quarter,qe.next_check_date,qe.next_check_trigger,lv.primary_exchange AS primary_exchange,lv.incorporation_country AS incorporation_country,lv.headquarters_country AS headquarters_country,lv.verified_on AS listing_verified_on,lv.verification_source_url AS listing_source_url';
  // c.theme is a theme description; read the optional score as theme_score.
  const rows=await db.prepare('SELECT '+fields+common+' ORDER BY '+ALLOW_SORT[sort]+' LIMIT ? OFFSET ?').bind(...args,rawLimit,(rawPage-1)*rawLimit).all();
  return json({items:(rows.results||[]).map(displayRow),total:count?.n||0,page:rawPage,limit:rawLimit,quarter});
 }
 async function candidateDetail(db,ticker){
  if(!validTicker(ticker))return json({error:'INVALID_TICKER'},400);
- const c=await db.prepare('SELECT * FROM companies WHERE ticker=?').bind(ticker).first();
+ const c=await db.prepare("SELECT c.*,lv.primary_exchange AS primary_exchange,lv.verification_source_url AS listing_source_url,lv.verified_on AS listing_verified_on FROM companies c INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' AND lv.primary_exchange IN ('NYSE','NASDAQ') WHERE c.ticker=? AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL')").bind(ticker).first();
  if(!c)return json({error:'NOT_FOUND'},404);
  const [filings,scores,events,signals,trades,prices,assets,topics,quarterHistory,bioEvents,proofs]=await Promise.all([
   db.prepare('SELECT accession_number,filing_type,accepted_at_utc,source_url,parse_status FROM filings WHERE company_ticker=? ORDER BY accepted_at_utc DESC LIMIT 25').bind(ticker).all(),
@@ -133,7 +133,7 @@ async function getStatus(db,env){
  const [s,m,summary]=await Promise.all([
   db.prepare('SELECT job_name,last_attempt_at_utc,last_success_at_utc,last_error,cursor,enabled,last_run_state,error_count FROM pipeline_state WHERE job_name=?').bind(JOB).first(),
   db.prepare('SELECT last_attempt_at_utc,last_success_at_utc,last_error,last_run_state,enabled FROM pipeline_state WHERE job_name=?').bind(MARKET_JOB).first(),
-  db.prepare('SELECT COUNT(DISTINCT company_ticker) AS covered,MAX(price_date) AS latest_price_date FROM market_snapshots WHERE close_usd>0').first()
+  db.prepare('SELECT COUNT(DISTINCT m.company_ticker) AS covered,MAX(m.price_date) AS latest_price_date FROM market_snapshots m INNER JOIN companies c ON c.ticker=m.company_ticker INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE m.close_usd>0 AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL')').first()
  ]);
  let state='NOT_CONFIGURED';
  if(!s?.enabled||env.AUTOMATION_ENABLED==='false')state='DISABLED';
@@ -147,7 +147,7 @@ async function getStatus(db,env){
 async function listSignals(db,url){
  const since=url.searchParams.get('since')||'2026-01-01';
  if(!/^\d{4}-\d{2}-\d{2}$/.test(since))return json({error:'INVALID_SINCE'},400);
- const r=await db.prepare('SELECT * FROM candidate_signals WHERE substr(disclosed_at_utc,1,10)>=? ORDER BY disclosed_at_utc DESC,id DESC LIMIT 100').bind(since).all();
+ const r=await db.prepare("SELECT cs.* FROM candidate_signals cs JOIN companies c ON c.ticker=cs.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE substr(cs.disclosed_at_utc,1,10)>=? AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY cs.disclosed_at_utc DESC,cs.id DESC LIMIT 100").bind(since).all();
  return json({items:r.results||[],count:r.results?.length||0});
 }
 function xmlValue(block,tag){
@@ -259,7 +259,7 @@ async function runRefresh(env,source){
  let checked=0,changed=0,cursor=0,state='SUCCESS',err='';
  try{
   await db.prepare("INSERT INTO pipeline_runs(id,job_name,started_at_utc,state,version) VALUES(?,?,?,'RUNNING','1')").bind(id,JOB,now).run();
-  const list=await db.prepare('SELECT ticker,cik FROM companies ORDER BY ticker ASC LIMIT 100').all();
+  const list=await db.prepare('SELECT c.ticker,c.cik FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' WHERE c.eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY c.ticker ASC LIMIT 100').all();
   const companies=list.results||[],count=companies.length;
   const st=await db.prepare('SELECT cursor FROM pipeline_state WHERE job_name=?').bind(JOB).first();
   cursor=st?.cursor||0;if(cursor>=count)cursor=0;
@@ -336,7 +336,7 @@ async function runMarketRefresh(env,source){
  let state='SUCCESS',ok=0,changed=0,failed=0,cursor=0,error='';
  try{
   await db.prepare("INSERT INTO pipeline_runs(id,job_name,started_at_utc,state,version) VALUES(?,?,?,'RUNNING','2')").bind(id,MARKET_JOB,now).run();
-  const rs=await db.prepare("SELECT ticker FROM companies WHERE eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY ticker LIMIT 100").all();
+  const rs=await db.prepare("SELECT c.ticker FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' WHERE c.eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY c.ticker LIMIT 100").all();
   const companies=rs.results||[],n=companies.length;
   const st=await db.prepare('SELECT cursor FROM pipeline_state WHERE job_name=?').bind(MARKET_JOB).first();
   cursor=st?.cursor||0;if(cursor>=n)cursor=0;
@@ -392,6 +392,8 @@ export default {
    if(mt){
     const ticker=mt[1].toUpperCase();
     if(mt[2]){
+     const eligible=await env.DB.prepare("SELECT c.ticker FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE c.ticker=? AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL')").bind(ticker).first();
+     if(!eligible)return json({error:'NOT_FOUND'},404);
      const r=await env.DB.prepare('SELECT * FROM score_snapshots WHERE company_ticker=? ORDER BY asof_utc DESC LIMIT 100').bind(ticker).all();
      return json({ticker,items:(r.results||[]).map(x=>({...x,...scoreRange(x)}))});
     }
