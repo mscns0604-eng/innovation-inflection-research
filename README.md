@@ -1,6 +1,6 @@
 # Innovation Inflection Research (IIR)
 
-**미국 혁신기술주 선행 탐색 연구 / 공식 기준 v0.2.0 / 최초 작성 2026-11-10**
+**미국 혁신기술주 선행 탐색 연구 / 적용범위 v0.3.0 (배점 RUBRIC v0.2.0) / 최초 작성 2026-11-10**
 
 ## 핵심 목표
 
@@ -9,6 +9,7 @@
 ## 문서
 
 - [STANDARD.md](STANDARD.md): 투자 가설, 범위, 신호의 정의
+- [BIO_QUARTERLY_POLICY.md](BIO_QUARTERLY_POLICY.md): 승인된 바이오 확장·분기별 신규 발굴·이월·제외 운용
 - [RUBRIC.md](RUBRIC.md): 시범 가중치·판정 규칙
 - [WORKFLOW.md](WORKFLOW.md): 조사·검증·보관 순서
 - [BACKTEST_PROTOCOL.md](BACKTEST_PROTOCOL.md): 2021년 이후 백테스트 규정
