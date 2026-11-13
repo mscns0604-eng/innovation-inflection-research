@@ -188,3 +188,34 @@ test('quarter rollover only carries non-excluded companies in bounded batches',(
  assert.match(code,/NOT EXISTS\(SELECT 1 FROM research_quarter_entries newer/);
  assert.doesNotMatch(code,/old\.review_status IN \([^)]*'EXCLUDED'/);
 });
+
+test('2026Q4 intake adds exactly 2 tech + 8 bio research candidates without price or insider fabrication',()=>{
+ const sql=readFileSync(new URL('../migrations/0005_q4_candidate_intake.sql',import.meta.url),'utf8');
+ assert.equal((sql.match(/INSERT OR IGNORE INTO companies\(/g)||[]).length,10);
+ assert.equal((sql.match(/'NEW','RESEARCHING'/g)||[]).length,10);
+ assert.equal((sql.match(/INSERT OR IGNORE INTO bio_profiles\(/g)||[]).length,8);
+ assert.equal((sql.match(/INSERT OR IGNORE INTO bio_assets\(/g)||[]).length,8);
+ assert.equal((sql.match(/'NONE',NULL,NULL,NULL,NULL,NULL,NULL,0,'WATCH'/g)||[]).length,10);
+ for(const code of ['SERV','AUR','VYGR','ACIU','BIOA','MANE','CGON','RXRX','AURA','CADL'])
+  assert.match(sql,new RegExp("VALUES\\('"+code+"',"));
+});
+test('biotech view uses burgundy theme and keeps existing dark tech mode',()=>{
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.match(html,/body\[data-radar-view="bio"\]\{background:#170d14/);
+ assert.match(html,/document\.body\.dataset\.radarView=next/);
+ assert.match(html,/next==='bio'\?'#170d14':'#101723'/);
+ assert.match(html,/class="list-num"/);
+ assert.match(html,/function renderSourceEvidence\(d\)/);
+ assert.match(html,/function safeSourceUrl\(raw\)/);
+ assert.match(html,/bio_lead_phase/);
+ assert.match(html,/종가 수집 대기/);
+ for(const symbol of ['SERV','AUR','VYGR','ACIU','BIOA','MANE','CGON','RXRX','AURA','CADL'])
+  assert.match(html,new RegExp(symbol+":'(NYSE|NASDAQ):"+symbol+"'"));
+});
+test('candidate API exposes primary evidence and biotech phase separately from insider signal',()=>{
+ const code=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ assert.match(code,/AS bio_lead_asset/);
+ assert.match(code,/AS bio_lead_phase/);
+ assert.match(code,/evidence:proofs\.results\|\|\[\]/);
+ assert.match(code,/WHERE company_ticker=\? ORDER BY event_date DESC LIMIT 15/);
+});
