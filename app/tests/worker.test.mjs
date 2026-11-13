@@ -219,3 +219,45 @@ test('candidate API exposes primary evidence and biotech phase separately from i
  assert.match(code,/evidence:proofs\.results\|\|\[\]/);
  assert.match(code,/WHERE company_ticker=\? ORDER BY event_date DESC LIMIT 15/);
 });
+
+test('strict 2026 US-only replacement retains history and counts 10+10',()=>{
+ const sql=readFileSync(new URL('../migrations/0006_us_company_only.sql',import.meta.url),'utf8');
+ const foreign=['APTV','GFS','SOPH','ACIU'];
+ const incoming=['OUST','TMDX','ANVS','FATE'];
+ assert.equal((sql.match(/INSERT OR IGNORE INTO companies\(/g)||[]).length,4);
+ assert.equal((sql.match(/INSERT OR IGNORE INTO research_quarter_entries\(/g)||[]).length,4);
+ assert.equal((sql.match(/INSERT OR IGNORE INTO bio_assets\(/g)||[]).length,2);
+ assert.equal((sql.match(/INSERT OR IGNORE INTO company_listing_verification\(/g)||[]).length,24);
+ assert.equal((sql.match(/'US_CONFIRMED'/g)||[]).length>=20,true);
+ assert.equal((sql.match(/UPDATE companies SET eligible_status='FOREIGN_ISSUER_EXCLUDED'/g)||[]).length,4);
+ assert.equal((sql.match(/UPDATE research_quarter_entries SET review_status='EXCLUDED'/g)||[]).length,4);
+ for(const ticker of foreign)assert.match(sql,new RegExp("WHERE ticker='"+ticker+"'"));
+ for(const ticker of incoming)assert.match(sql,new RegExp("VALUES\\('"+ticker+"'"));
+ assert.doesNotMatch(sql,/DELETE FROM companies|DROP TABLE/i);
+ assert.match(sql,/CHECK\(\(eligibility_status='US_CONFIRMED' AND incorporation_country='US'/);
+});
+test('all public candidate pathways require verified US ownership and location',()=>{
+ const source=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ assert.match(source,/const where=baseWhere\+" AND lv\.eligibility_status='US_CONFIRMED'/);
+ assert.match(source,/JOIN company_listing_verification lv ON lv\.company_ticker=c\.ticker/g);
+ assert.match(source,/headquarters_country='US'/);
+ assert.match(source,/runMarketRefresh/);
+ assert.match(source,/runRefresh/);
+ assert.match(source,/candidateDetail/);
+ assert.match(source,/getQuarterState/);
+ assert.match(source,/listSignals/);
+});
+test('geo-only exclusion does not falsely delete original prices or filings',()=>{
+ const sql=readFileSync(new URL('../migrations/0006_us_company_only.sql',import.meta.url),'utf8');
+ assert.doesNotMatch(sql,/\bDELETE\b/i);
+ assert.doesNotMatch(sql,/\bDROP TABLE\b/i);
+ assert.match(sql,/FOREIGN_ISSUER_EXCLUDED/);
+ assert.match(sql,/decision_source_url/);
+});
+test('US-only filter label and revised chart symbols appear in both views',()=>{
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.match(html,/미국 법인 · 미국 본사 · NYSE\/Nasdaq 보통주만 표시/);
+ assert.match(html,/한국 증권사별 실제 주문 가능 여부는 계좌에서 확인/);
+ for(const t of ['OUST','TMDX','ANVS','FATE'])assert.match(html,new RegExp(t+":'(NYSE|NASDAQ):"+t+"'"));
+ for(const t of ['APTV','GFS','SOPH','ACIU'])assert.doesNotMatch(html,new RegExp(t+":'(NYSE|NASDAQ):"+t+"'"));
+});
