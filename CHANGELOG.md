@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.3.2 — 2026-11-13 — 미국 법인·본사 기준으로만 TECH 10 + BIO 10 유지
+
+- 해외 법인 APTV(저지섬/스위스), GFS(케이맨제도), SOPH·ACIU(스위스) 활성 목록 제외, 원본 이력은 보존.
+- 기술 OUST·TMDX, 바이오 ANVS·FATE를 신규 연구 후보로 편입. SEC 거래·가격은 검증 전까지 비워둠.
+- 미국 법인, 미국 본사, NYSE/Nasdaq 상장 보통주 근거 저장 테이블 `company_listing_verification` 추가.
+- API·SEC/종가 수집·분기 이월에 US_CONFIRMED 필터 적용. 한국 개별 증권사에서의 실제 주문 가능 여부는 미보장.
+
+
 ## v0.3.1 — 2026-11-13 — 후보 10+10 및 바이오 버건디 테마
 
 - 기존 TECH 8 / BIO 2 후보를 보존하면서 TECH SERV/AUR, BIO VYGR/ACIU/BIOA/MANE/CGON/RXRX/AURA/CADL 10개 추가.
