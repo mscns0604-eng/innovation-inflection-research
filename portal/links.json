@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-11-13",
+  "portal_title": "MY WORKSPACE",
+  "items": [
+    {
+      "id": "iir-tech",
+      "title": "기술혁신주 레이더",
+      "subtitle": "Innovation Radar",
+      "description": "미국 기술혁신주 후보, 내부자 매수, 기술 변곡점과 최근 종가를 확인합니다.",
+      "href": "https://iir-innovation-radar.shnboy.workers.dev/?view=tech",
+      "category": "invest",
+      "visual": "tech",
+      "icon": "trend",
+      "label": "기술혁신주",
+      "environment": "production",
+      "order": 10
+    },
+    {
+      "id": "iir-bio",
+      "title": "바이오 혁신주 레이더",
+      "subtitle": "Biotech Radar",
+      "description": "치매·노화·암·탈모 중심 바이오 후보와 파이프라인, 분기별 연구 이력을 확인합니다.",
+      "href": "https://iir-innovation-radar.shnboy.workers.dev/?view=bio",
+      "category": "invest",
+      "visual": "bio",
+      "icon": "dna",
+      "label": "바이오",
+      "environment": "production",
+      "order": 20
+    },
+    {
+      "id": "auction-radar",
+      "title": "경매 레이더",
+      "subtitle": "Auction Radar",
+      "description": "서울·경기권 경매 물건을 검색하고 상세정보와 지도를 확인합니다.",
+      "href": "https://auction-radar-v02.shnboy.workers.dev/",
+      "category": "realestate",
+      "visual": "auction",
+      "icon": "building",
+      "label": "경매정보",
+      "environment": "production",
+      "order": 30
+    },
+    {
+      "id": "auction-map-preview",
+      "title": "경매 지도 미리보기",
+      "subtitle": "Map Preview",
+      "description": "경매 물건의 지도 표기 기능을 점검하기 위한 별도 테스트 페이지입니다.",
+      "href": "https://auction-radar-map-preview.shnboy.workers.dev/",
+      "category": "test",
+      "visual": "test",
+      "icon": "map",
+      "label": "지도 테스트",
+      "environment": "preview",
+      "order": 40
+    },
+    {
+      "id": "auction-roadview-preview",
+      "title": "경매 로드뷰 미리보기",
+      "subtitle": "Roadview Preview",
+      "description": "경매 현장 주변의 로드뷰 기능을 점검하기 위한 테스트 페이지입니다.",
+      "href": "https://auction-radar-roadview-preview.shnboy.workers.dev/",
+      "category": "test",
+      "visual": "test",
+      "icon": "street",
+      "label": "로드뷰 테스트",
+      "environment": "preview",
+      "order": 50
+    },
+    {
+      "id": "iir-github",
+      "title": "IIR 개발 저장소",
+      "subtitle": "GitHub · Source & Standards",
+      "description": "기업 발굴 기준서, 바이오 분기 운영 규칙, 연구 기록과 웹앱 소스를 관리합니다.",
+      "href": "https://github.com/mscns0604-eng/innovation-inflection-research",
+      "category": "docs",
+      "visual": "docs",
+      "icon": "git",
+      "label": "개발 자료",
+      "environment": "resource",
+      "order": 60
+    }
+  ]
+}
