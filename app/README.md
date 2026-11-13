@@ -8,7 +8,7 @@
 
 Node.js 22.18+와 cf CLI 사용. `npm install`, `npm test`, `npm run build`, `npm run deploy` 순서. cf 로그인은 본인 계정으로 수행합니다. `scripts/build.mjs`는 `web.html`을 `worker.js`에 주입하여 `dist/worker.mjs`를 생성합니다. `dist`는 .gitignore 처리합니다. API로 첫 배포를 수행했으며 GitHub 푸시가 자동 배포된다고 가정하지 않습니다.
 
-Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
+Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql`, `0005_q4_candidate_intake.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
 
 ## 공개 API
 
@@ -45,6 +45,17 @@ UTC `30 23 * * MON-FRI`(KST 화~토 08:30), UTC `30 11 * * MON-FRI`(KST 월~금 
 - `GET /api/quarter`는 분기 ID와 상태 통계를, `GET /api/candidates?mode=QUALIFIED_BIO&quarter_only=1`은 현분기 바이오 목록을 반환. `GET /api/candidates/:ticker`는 파이프라인·태그·마일스톤·분기 이력 정보(검증 전은 비워둠)를 반환.
 - 분기 경계에서 `RESEARCHING`/`CARRY_FORWARD`만 회차당 40개씩 신규 분기 `CARRYOVER`로 자동 이월. `EXCLUDED`는 자동 이월하지 않으며 과거 이력에 남김. **보류 전용 목록은 없음**. 이월은 연구 완료나 임상 성공을 의미하지 않음.
 - **아직 자동 신규 기업 발굴·임상 연구 평가·관리자 편집 화면은 미구현**; 해당 영역을 자동화된 것처럼 표현하지 않음.
+
+## 2026-11-13 후보 20개 운영 화면 (v0.3.1)
+
+- 기술혁신 10개 (기존 8 + 신규 SERV/AUR), 바이오 10개 (기존 2 + 신규 VYGR/ACIU/BIOA/MANE/CGON/RXRX/AURA/CADL).
+- 두 탭은 같은 D1/시장가/SEC 이력 사용. 기술 탭은 기존 다크블루 팔레트, 바이오 탭은 명도를 유사하게 유지한 딥 버건디(화면 배경 `#170d14`)로 분리. 기술·바이오 화면 URL은 `?view=tech`, `?view=bio`.
+- 바이오 태그 DEMENTIA/AGING/CANCER/ALOPECIA/APPLIED_AI, 임상 프로그램/단계/예상 이벤트, 근거 원문 링크 제공. **노화 경로 표적 ≠ 사람의 수명 연장 입증**, **MANE 신규 제형 ≠ 새로운 모낭재생 기전**.
+- 2026Q4 신규 회사 10개는 모두 분기 `NEW, RESEARCHING` / 기술 우선 B경로 / SEC 내부자 거래 미확인. `seed_price_usd=NULL`, `seed_price_asof=NULL`, `signal_type=NONE`. 주가나 매수 신호 임의 입력 금지.
+- 01~10은 두 탭 내부의 현재 목록 순번으로 투자 추천·점수·공식 연구순위가 아님. 기존 점수는 별도의 과거 평가 근거로 보존.
+- 연구 근거: `research/2026-11-13_q4_candidate_intake.md`. 회사 IR 발표는 **기업 주장의 원문 출처**이며 독립 확인을 마친 임상 성공을 뜻하지 않는다.
+- 새로운 티커의 최근 종가는 Cron 가격 수집이 성공하면 저장·표시되며, 그 전까지 **종가 수집 대기**로 표시한다. 클라우드 운영에서 자동 시세 수집의 실제 성공은 `GET /api/status`로 별도 확인.
+- 브라우저 테스트: 10+10 탭 전환, 치매/암/노화/탈모 필터, 버건디/기존 다크 테마, 원문 링크, 신규가격 미수집 표시 검증.
 
 ## 아직 미구현
 
