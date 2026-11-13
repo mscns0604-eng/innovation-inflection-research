@@ -209,7 +209,7 @@ function bioTagsMarkup(c){
  names.sort(function(a,b){return order.indexOf(a)-order.indexOf(b)});
  if(!names.length)return '<span class="muted">관심 분야 검증 전</span>';
  return names.map(function(x){return '<span class="bio-tag bio-'+esc(x.toLowerCase())+'">'+esc(bioTopics[x])+'</span>'}).join('')+
- '<div class="tiny muted" style="margin-top:5px">기존 연구 분류 · 원문 확인 필요</div>';
+ '<div class="tiny muted" style="margin-top:5px">'+esc(c.bio_classification_status==='SOURCE_REVIEWED'&&Number(c.unverified_topic)===0?'기업 공식자료로 연구 분야 확인 · 임상 유효성은 별도 검증':'과거 조사 분류 · 원문 검증 필요')+'</div>';
 }
 function renderBio(){
  var list=filtered(),all=data.filter(function(c){return c.bio_mode==='QUALIFIED_BIO'&&c.quarter_review_status!=='EXCLUDED'}),target=el('bio-rows');
@@ -222,7 +222,7 @@ function renderBio(){
  '<td><button type="button" class="star '+(saved.has(c.ticker)?'saved':'')+'" data-star="'+esc(c.ticker)+'" aria-label="관심 종목">'+(saved.has(c.ticker)?'★':'☆')+'</button></td>'+
  '<td><div class="stock"><span class="list-num">'+String(index+1).padStart(2,'0')+'</span>'+esc(c.ticker)+'</div><div class="company">'+esc(c.name)+'</div>'+(c.review_rank?'<div class="tiny muted">2026 초기 평가 #'+Number(c.review_rank)+'</div>':'')+'</td>'+
  '<td><div class="bio-tags">'+bioTagsMarkup(c)+'</div></td>'+
- '<td><div class="bio-tech">'+esc(c.summary||c.theme||'기술 근거 확인 전')+'</div><div class="tiny muted">임상/연구 단계 원문 검증 전</div></td>'+
+ '<td><div class="bio-tech">'+esc(c.summary||c.theme||'기술 근거 확인 전')+'</div><div class="tiny muted">'+esc(c.bio_lead_asset?'주요 프로그램: '+c.bio_lead_asset:'개별 파이프라인 검증 전')+'</div><div class="tiny muted">'+esc(c.bio_lead_phase?'기업 발표 단계: '+c.bio_lead_phase:'임상/연구 단계 원문 검증 전')+'</div></td>'+
  '<td>'+(c.next_check_trigger?'<strong>'+esc(c.next_check_trigger)+'</strong>':'<span class="muted">공식 확인 일정 없음</span>')+'<div class="tiny muted">'+esc(c.next_check_date?'다음 점검 '+date(c.next_check_date):'회사 예상 일정 · 세부일 검증 전')+'</div></td>'+
  '<td><span class="symbol '+signalClass(c.signal_type)+'">'+esc(label(c.signal_type))+'</span><div class="tiny muted">'+esc(money(c.buy_amount_usd))+' · 거래 성격 검증 전</div></td>'+
  '<td class="mono">'+latestCloseMarkup(c)+'</td>'+
