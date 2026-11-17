@@ -208,7 +208,7 @@ export function secSourceUrl(path){
 async function secText(path,ctx){
  if(Date.now()>ctx.deadline)throw Error('TIME_BUDGET_EXCEEDED');
  const email=ctx.email;
- const target=secSourceUrl(path),headers={'User-Agent':'IIR-Research/0.1 contact '+email,'Accept':'application/json, application/xml, text/xml, */*'};
+ const target=secSourceUrl(path),stage=path.startsWith('/submissions/')?'SUBMISSIONS':path.startsWith('/Archives/')?'FORM4_XML':'TICKER_MAP',headers={'User-Agent':'IIR-Research/0.1 contact '+email,'Accept':'application/json, application/xml, text/xml, */*'};
  let attempts=0;
  while(attempts<2){
   if(Date.now()>ctx.deadline)throw Error('TIME_BUDGET_EXCEEDED');
@@ -217,15 +217,15 @@ async function secText(path,ctx){
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),SEC_TIMEOUT_MS);
   try{
    const res=await fetch(target,{headers,signal:controller.signal,redirect:'manual'});
-   if([401,403,429].includes(res.status))throw Error('SEC_HTTP_'+res.status+'_STOP');
+   if([401,403,429].includes(res.status))throw Error('SEC_HTTP_'+res.status+'_STOP_'+stage);
    if(res.status>=500&&attempts<2){await new Promise(r=>setTimeout(r,300));continue}
-   if(!res.ok)throw Error('SEC_HTTP_'+res.status);
+   if(!res.ok)throw Error('SEC_HTTP_'+res.status+'_'+stage);
    const len=Number(res.headers.get('content-length')||0);
    if(len>2_500_000)throw Error('SEC_RESPONSE_TOO_LARGE');
    const body=await res.text();
    if(body.length>2_500_000)throw Error('SEC_RESPONSE_TOO_LARGE');
    return body;
-  }catch(e){if(attempts>=2||!/fetch failed|AbortError|SEC_HTTP_5\d\d/i.test(String(e)))throw e}
+  }catch(e){if(attempts>=2){if(String(e?.name||'')==='AbortError')throw Error('SEC_TIMEOUT_'+stage);throw e}if(!/fetch failed|AbortError|SEC_HTTP_5\d\d/i.test(String(e)))throw e}
   finally{clearTimeout(timeout)}
  }
  throw Error('SEC_UNEXPECTED_RETRY');
