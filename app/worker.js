@@ -257,8 +257,9 @@ async function processCompany(db,c,ctx,lookup){
   const cutoff=new Date(Date.now()-180*86400000).toISOString().slice(0,10);
   if(filingDate&&filingDate<cutoff)continue;
   checked++;ctx.files++;
-  const exists=await db.prepare('SELECT id FROM filings WHERE cik=? AND accession_number=?').bind(cik,accession).first();
-  if(exists)continue;
+  // Accession numbers are globally unique; the archive filer CIK may differ from the issuer CIK.
+  const exists=await db.prepare('SELECT id,company_ticker FROM filings WHERE accession_number=? LIMIT 1').bind(accession).first();
+  if(exists){if(exists.company_ticker!==c.ticker)throw Error('SEC_ACCESSION_ISSUER_CONFLICT');continue;}
   const url='/Archives/edgar/data/'+Number(cik)+'/'+accession.replace(/-/g,'')+'/'+documentName;
   const body=await secText(url,ctx);
   const parsed=parseForm4(body);
@@ -267,7 +268,7 @@ async function processCompany(db,c,ctx,lookup){
   const sourceUrl=SOURCE_ROOT+url;
   await db.prepare('INSERT OR IGNORE INTO filings(cik,company_ticker,accession_number,filing_type,accepted_at_utc,published_at_utc,source_url,fetched_at_utc,parse_status) VALUES(?,?,?,?,?,?,?,?,?)')
    .bind(cik,c.ticker,accession,filings.form[i],accepted,accepted,sourceUrl,iso(),parsed.status).run();
-  const file=await db.prepare('SELECT id FROM filings WHERE cik=? AND accession_number=?').bind(cik,accession).first();
+  const file=await db.prepare('SELECT id FROM filings WHERE company_ticker=? AND accession_number=? LIMIT 1').bind(c.ticker,accession).first();
   if(!file)throw Error('FILINGS_WRITE_MISSING');
   for(const t of parsed.transactions){
    await db.prepare('INSERT OR IGNORE INTO insider_transactions(filing_id,transaction_identity,reporting_owner_key,reporting_owner_name,trade_date,code,shares,price_usd,value_usd,direct_indirect,verification_status) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
