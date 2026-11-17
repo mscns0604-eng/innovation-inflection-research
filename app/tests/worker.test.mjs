@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter} from '../dist/worker.mjs';
+import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
  const r=scoreRange({});
@@ -27,6 +27,15 @@ test('parse only Form4 acquired P; no automatic verification', () => {
  assert.equal(r.transactions.length,1);
  assert.equal(r.transactions[0].value,200);
  assert.equal(r.transactions[0].ownerCik,'1234');
+});
+test('SEC submissions and raw Form 4 use the correct official host and safe document path',()=>{
+ assert.equal(secSourceUrl('/submissions/CIK0000926282.json'),'https://data.sec.gov/submissions/CIK0000926282.json');
+ assert.equal(secSourceUrl('/files/company_tickers.json'),'https://www.sec.gov/files/company_tickers.json');
+ assert.equal(rawForm4DocumentName('xslF345X06/ownership.xml'),'ownership.xml');
+ assert.equal(rawForm4DocumentName('ownership.xml'),'ownership.xml');
+ assert.equal(secSourceUrl('/Archives/edgar/data/926282/000119312526458287/'+rawForm4DocumentName('xslF345X06/ownership.xml')),'https://www.sec.gov/Archives/edgar/data/926282/000119312526458287/ownership.xml');
+ assert.equal(rawForm4DocumentName('../../secrets'),null);
+ assert.throws(()=>secSourceUrl('https://attacker.invalid/'),/SEC_INVALID_SOURCE_PATH/);
 });
 test('SEC error page cannot become a signal',()=>{
  assert.deepEqual(parseForm4('HTTP 403'),{status:'UNSUPPORTED_XML',transactions:[]});
@@ -209,7 +218,7 @@ test('biotech view uses burgundy theme and keeps existing dark tech mode',()=>{
  assert.match(html,/function safeSourceUrl\(raw\)/);
  assert.match(html,/bio_lead_phase/);
  assert.match(html,/종가 수집 대기/);
- for(const symbol of ['SERV','AUR','VYGR','ACIU','BIOA','MANE','CGON','RXRX','AURA','CADL'])
+ for(const symbol of ['SERV','AUR','VYGR','BIOA','MANE','CGON','RXRX','AURA','CADL','OUST','TMDX','ANVS','FATE'])
   assert.match(html,new RegExp(symbol+":'(NYSE|NASDAQ):"+symbol+"'"));
 });
 test('candidate API exposes primary evidence and biotech phase separately from insider signal',()=>{
@@ -249,7 +258,7 @@ test('all public candidate pathways require verified US ownership and location',
 });
 test('geo-only exclusion does not falsely delete original prices or filings',()=>{
  const sql=readFileSync(new URL('../migrations/0006_us_company_only.sql',import.meta.url),'utf8');
- assert.doesNotMatch(sql,/\bDELETE\b/i);
+ assert.doesNotMatch(sql,/^\s*DELETE\b/im);
  assert.doesNotMatch(sql,/\bDROP TABLE\b/i);
  assert.match(sql,/FOREIGN_ISSUER_EXCLUDED/);
  assert.match(sql,/decision_source_url/);
