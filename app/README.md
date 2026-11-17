@@ -8,7 +8,7 @@
 
 Node.js 22.18+와 cf CLI 사용. `npm install`, `npm test`, `npm run build`, `npm run deploy` 순서. cf 로그인은 본인 계정으로 수행합니다. `scripts/build.mjs`는 `web.html`을 `worker.js`에 주입하여 `dist/worker.mjs`를 생성합니다. `dist`는 .gitignore 처리합니다. API로 첫 배포를 수행했으며 GitHub 푸시가 자동 배포된다고 가정하지 않습니다.
 
-Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql`, `0005_q4_candidate_intake.sql`, `0006_us_company_only.sql`, `0007_sec_identity_repair.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
+Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql`, `0005_q4_candidate_intake.sql`, `0006_us_company_only.sql`, `0007_sec_identity_repair.sql`, `0008_sec_accession_uniqueness.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
 
 ## 공개 API
 
@@ -57,9 +57,16 @@ UTC `30 23 * * MON-FRI`(KST 화~토 08:30), UTC `30 11 * * MON-FRI`(KST 월~금 
 - 새로운 티커의 최근 종가는 Cron 가격 수집이 성공하면 저장·표시되며, 그 전까지 **종가 수집 대기**로 표시한다. 클라우드 운영에서 자동 시세 수집의 실제 성공은 `GET /api/status`로 별도 확인.
 - 브라우저 테스트: 10+10 탭 전환, 치매/암/노화/탈모 필터, 버건디/기존 다크 테마, 원문 링크, 신규가격 미수집 표시 검증.
 
+## 2026-11-17 SEC 수집 복구 검증
+
+- 일회성 독립 Cloudflare Worker에서 SEC 기업 공시·Form 4 원문·티커 목록의 HTTP 200 응답을 확인함. 진단 Worker와 임시 Cron은 정리했고 기존 두 정기 일정만 유지.
+- 20개 활성 기업 CIK를 모두 보완하고 Form 4 접수번호의 UNIQUE 인덱스를 적용함. 기존 자료 삭제 없음.
+- **운영 Cron이 새 코드로 성공한 기록은 아직 없음.** 마지막 SEC_HTTP_404는 수정 전 실행 기록임.
+- 다음 2026-11-17 KST 20:30 정기 실행 후 pipeline_state/pipeline_runs 확인. 상세 복구 기준: [SEC 장애 분석](../research/2026-11-17_sec_ingestion_diagnosis.md).
+
 ## 아직 미구현
 
-보장된 정식 라이선스 시세 API, 사람 검증 편집 화면, React/Vite + Workers Static Assets 전환, AI 기술평가, SEC 실제 네트워크 성공 확인. 거짓 점수/계약일 생성 금지. 자료의 역사적 시점과 마지막 성공 시각을 분리합니다.
+보장된 정식 라이선스 시세 API, 사람 검증 편집 화면, React/Vite + Workers Static Assets 전환, AI 기술평가, SEC 자동 수집 전체 Cron 성공 검증. 거짓 점수/계약일 생성 금지. 자료의 역사적 시점과 마지막 성공 시각을 분리합니다.
 
 ## 미국 본사·법인 레이더만 표시 (v0.3.2 / 2026-11-13)
 
