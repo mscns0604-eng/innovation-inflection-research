@@ -36,7 +36,11 @@ export function scoreRange(row){
 }
 function displayRow(r){
  const range=scoreRange({...r,theme:r.theme_score});
- return {...r,...range,score_version:RUBRIC_VERSION};
+ // "No verified signal" is not the same as "no purchases ever happened".
+ const signalType=r.signal_type==='NONE'
+  ? (Number(r.live_p_count||0)>0?'UNVERIFIED':Number(r.sec_form4_count||0)>0?'FORM4_NO_P':'NOT_COLLECTED')
+  :r.signal_type;
+ return {...r,signal_type:signalType,...range,score_version:RUBRIC_VERSION};
 }
 function validTicker(s){return typeof s==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(s)}
 export function quarterFor(at=new Date()){
@@ -106,7 +110,7 @@ async function listCandidates(db,url){
  const quarterJoin=" LEFT JOIN research_quarter_entries qe ON qe.company_ticker=c.ticker AND qe.quarter_id='"+quarter+"'";
  const common=' FROM companies c INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker LEFT JOIN score_snapshots s ON s.id=(SELECT s2.id FROM score_snapshots s2 WHERE s2.company_ticker=c.ticker ORDER BY s2.asof_utc DESC,s2.id DESC LIMIT 1)'+tradeAggregate+marketJoin+bioJoin+quarterJoin+' WHERE '+where;
  const count=await db.prepare('SELECT COUNT(*) n'+common).bind(...args).first();
- const fields='c.*,CASE WHEN bt.buy_shares>0 THEN ROUND(bt.buy_cost/bt.buy_shares,6) ELSE NULL END AS insider_avg_buy_price_usd,bt.min_buy_price_usd,bt.max_buy_price_usd,bt.first_buy_date,bt.last_buy_date,bt.buy_trade_rows,bt.buy_named_owner_count,bt.secondary_trade_rows,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,s.review_rank,s.research_status AS reviewed_research_status,s.entry_risk_status,s.reason_summary AS current_reason_summary,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure,ms.close_usd AS latest_close_usd,ms.price_date AS latest_close_date,ms.source_name AS latest_close_source,ms.retrieved_at_utc AS latest_close_retrieved_at,bp.classification_status AS bio_classification_status,bp.inclusion_basis AS bio_inclusion_basis,btopic.bio_tags,btopic.unverified_topic,(SELECT ba.asset_name FROM bio_assets ba WHERE ba.company_ticker=c.ticker ORDER BY ba.id LIMIT 1) AS bio_lead_asset,(SELECT ba.phase_label FROM bio_assets ba WHERE ba.company_ticker=c.ticker AND ba.phase_verified=1 ORDER BY ba.id LIMIT 1) AS bio_lead_phase,qe.quarter_id AS research_quarter,qe.origin AS quarter_origin,qe.review_status AS quarter_review_status,qe.carried_from_quarter,qe.next_check_date,qe.next_check_trigger,lv.primary_exchange AS primary_exchange,lv.incorporation_country AS incorporation_country,lv.headquarters_country AS headquarters_country,lv.verified_on AS listing_verified_on,lv.verification_source_url AS listing_source_url';
+ const fields='c.*,CASE WHEN bt.buy_shares>0 THEN ROUND(bt.buy_cost/bt.buy_shares,6) ELSE NULL END AS insider_avg_buy_price_usd,bt.min_buy_price_usd,bt.max_buy_price_usd,bt.first_buy_date,bt.last_buy_date,bt.buy_trade_rows,bt.buy_named_owner_count,bt.secondary_trade_rows,s.insider,s.theme AS theme_score,s.technology,s.external_validation,s.financial,s.price,s.macro,s.asof_utc AS score_asof_utc,s.review_rank,s.research_status AS reviewed_research_status,s.entry_risk_status,s.reason_summary AS current_reason_summary,(SELECT COUNT(*) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS live_p_count,(SELECT COUNT(*) FROM filings f WHERE f.company_ticker=c.ticker AND f.parse_status IN ('UNVERIFIED','PARTIAL_UNVERIFIED')) AS sec_form4_count,(SELECT MAX(disclosed_at_utc) FROM candidate_signals cs WHERE cs.company_ticker=c.ticker) AS latest_sec_disclosure,ms.close_usd AS latest_close_usd,ms.price_date AS latest_close_date,ms.source_name AS latest_close_source,ms.retrieved_at_utc AS latest_close_retrieved_at,bp.classification_status AS bio_classification_status,bp.inclusion_basis AS bio_inclusion_basis,btopic.bio_tags,btopic.unverified_topic,(SELECT ba.asset_name FROM bio_assets ba WHERE ba.company_ticker=c.ticker ORDER BY ba.id LIMIT 1) AS bio_lead_asset,(SELECT ba.phase_label FROM bio_assets ba WHERE ba.company_ticker=c.ticker AND ba.phase_verified=1 ORDER BY ba.id LIMIT 1) AS bio_lead_phase,qe.quarter_id AS research_quarter,qe.origin AS quarter_origin,qe.review_status AS quarter_review_status,qe.carried_from_quarter,qe.next_check_date,qe.next_check_trigger,lv.primary_exchange AS primary_exchange,lv.incorporation_country AS incorporation_country,lv.headquarters_country AS headquarters_country,lv.verified_on AS listing_verified_on,lv.verification_source_url AS listing_source_url';
  // c.theme is a theme description; read the optional score as theme_score.
  const rows=await db.prepare('SELECT '+fields+common+' ORDER BY '+ALLOW_SORT[sort]+' LIMIT ? OFFSET ?').bind(...args,rawLimit,(rawPage-1)*rawLimit).all();
  return json({items:(rows.results||[]).map(displayRow),total:count?.n||0,page:rawPage,limit:rawLimit,quarter});
@@ -178,6 +182,15 @@ export function rawForm4DocumentName(name){
  const raw=name.replace(/^xslF\d{3}X\d{2}\//i,'');
  return /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,119}$/.test(raw)&&!raw.includes('..')?raw:null;
 }
+export function cikFromVerifiedSecUrl(url){
+ if(typeof url!=='string')return null;
+ const m=url.match(/^https:\/\/www\.sec\.gov\/Archives\/edgar\/data\/([1-9]\d{0,9})\/\d{18}\/[A-Za-z0-9_.-]+(?:\?.*)?$/);
+ return m?String(m[1]).padStart(10,'0'):null;
+}
+export function secIssuerIdentityMatches(sub,ticker,cik){
+ const issuerCik=String(sub?.cik??'').padStart(10,'0');
+ return issuerCik===cik&&Array.isArray(sub?.tickers)&&sub.tickers.some(t=>String(t).toUpperCase()===ticker);
+}
 export function secSourceUrl(path){
  if(typeof path!=='string')throw Error('SEC_INVALID_SOURCE_PATH');
  if(/^\/submissions\/CIK\d{10}\.json$/.test(path))return SUBMISSIONS_ROOT+path;
@@ -186,12 +199,13 @@ export function secSourceUrl(path){
  throw Error('SEC_INVALID_SOURCE_PATH');
 }
 async function secText(path,ctx){
- if(++ctx.requests>MAX_REQUESTS)throw Error('REQUEST_BUDGET_EXCEEDED');
  if(Date.now()>ctx.deadline)throw Error('TIME_BUDGET_EXCEEDED');
  const email=ctx.email;
  const target=secSourceUrl(path),headers={'User-Agent':'IIR-Research/0.1 contact '+email,'Accept':'application/json, application/xml, text/xml, */*'};
  let attempts=0;
  while(attempts<2){
+  if(Date.now()>ctx.deadline)throw Error('TIME_BUDGET_EXCEEDED');
+  if(++ctx.requests>MAX_REQUESTS)throw Error('REQUEST_BUDGET_EXCEEDED');
   attempts++;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),SEC_TIMEOUT_MS);
   try{
@@ -215,14 +229,14 @@ async function checkEnabled(db){
 }
 async function processCompany(db,c,ctx,lookup){
  await checkEnabled(db);
- let cik=c.cik;
- if(!cik){
-  const mapped=lookup?.get(c.ticker);
-  if(!mapped)return {checked:0,changed:0};
-  cik=String(mapped).padStart(10,'0');
-  await db.prepare('UPDATE companies SET cik=? WHERE ticker=? AND cik IS NULL').bind(cik,c.ticker).run();
- }
+ const sourceCik=cikFromVerifiedSecUrl(c.verification_source_url);
+ const mapped=lookup?.get(c.ticker);
+ const cik=sourceCik||(c.cik&&/^\d{10}$/.test(c.cik)?c.cik:null)||(mapped?String(mapped).padStart(10,'0'):null);
+ if(!cik)return {checked:0,changed:0,skipped:'CIK_NOT_FOUND'};
  const sub=JSON.parse(await secText('/submissions/CIK'+cik+'.json',ctx));
+ if(!secIssuerIdentityMatches(sub,c.ticker,cik))throw Error('SEC_CIK_TICKER_MISMATCH');
+ // CIK is saved only after the issuer's current SEC record confirms the ticker.
+ if(c.cik!==cik)await db.prepare('UPDATE companies SET cik=? WHERE ticker=?').bind(cik,c.ticker).run();
  const filings=sub?.filings?.recent;
  if(!filings||!Array.isArray(filings.form))throw Error('INVALID_SEC_SUBMISSIONS');
  let checked=0,changed=0;
@@ -241,6 +255,7 @@ async function processCompany(db,c,ctx,lookup){
   const url='/Archives/edgar/data/'+Number(cik)+'/'+accession.replace(/-/g,'')+'/'+documentName;
   const body=await secText(url,ctx);
   const parsed=parseForm4(body);
+  if(parsed.status==='UNSUPPORTED_XML')throw Error('SEC_UNSUPPORTED_FORM4_XML');
   const sourceUrl=SOURCE_ROOT+url;
   await db.prepare('INSERT OR IGNORE INTO filings(cik,company_ticker,accession_number,filing_type,accepted_at_utc,published_at_utc,source_url,fetched_at_utc,parse_status) VALUES(?,?,?,?,?,?,?,?,?)')
    .bind(cik,c.ticker,accession,filings.form[i],accepted,accepted,sourceUrl,iso(),parsed.status).run();
@@ -276,22 +291,33 @@ async function runRefresh(env,source){
  let checked=0,changed=0,cursor=0,state='SUCCESS',err='';
  try{
   await db.prepare("INSERT INTO pipeline_runs(id,job_name,started_at_utc,state,version) VALUES(?,?,?,'RUNNING','1')").bind(id,JOB,now).run();
-  const list=await db.prepare("SELECT c.ticker,c.cik FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' WHERE c.eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY c.ticker ASC LIMIT 100").all();
+  const list=await db.prepare("SELECT c.ticker,c.cik,lv.verification_source_url FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' WHERE c.eligible_status IN ('ELIGIBLE','CONDITIONAL') ORDER BY c.ticker ASC LIMIT 100").all();
   const companies=list.results||[],count=companies.length;
   const st=await db.prepare('SELECT cursor FROM pipeline_state WHERE job_name=?').bind(JOB).first();
   cursor=st?.cursor||0;if(cursor>=count)cursor=0;
   if(count>0){
    let lookup=null;
-   if(companies.slice(cursor,cursor+MAX_COMPANIES).some(c=>!c.cik)){
+   if(companies.slice(cursor,cursor+MAX_COMPANIES).some(c=>!cikFromVerifiedSecUrl(c.verification_source_url)&&!c.cik)){
     const tickerJSON=JSON.parse(await secText('/files/company_tickers.json',ctx));
     lookup=new Map(Object.values(tickerJSON).map(x=>[String(x.ticker).toUpperCase(),x.cik_str]));
    }
    const end=Math.min(count,cursor+MAX_COMPANIES);
+   let perCompanyErrors=0;
    for(let i=cursor;i<end;i++){
     if(ctx.files>=MAX_FILINGS||Date.now()>ctx.deadline)break;
-    const r=await processCompany(db,companies[i],ctx,lookup);
-    checked+=r.checked;changed+=r.changed;cursor=i+1;
+    try{
+     const r=await processCompany(db,companies[i],ctx,lookup);
+     checked+=r.checked;changed+=r.changed;
+     if(r.skipped){state='PARTIAL';err=(companies[i].ticker+': '+r.skipped).slice(0,170)}
+    }catch(e){
+     const message=String(e?.message||e);
+     if(/SEC_HTTP_(401|403|429)_STOP|EMERGENCY_STOP|REQUEST_BUDGET_EXCEEDED|TIME_BUDGET_EXCEEDED/.test(message))throw e;
+     perCompanyErrors++;
+     state='PARTIAL';err=(companies[i].ticker+': '+message).slice(0,170);
+    }
+    cursor=i+1;
     await db.prepare('UPDATE pipeline_state SET cursor=? WHERE job_name=? AND lock_owner=?').bind(cursor,JOB,id).run();
+    if(perCompanyErrors>=2)break; // bounded failure budget; resume after checkpoint
    }
    if(cursor>=count)cursor=0;
   }
