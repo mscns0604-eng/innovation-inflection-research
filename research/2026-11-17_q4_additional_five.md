@@ -36,7 +36,7 @@
 - Q3 매출 $32.6m(+52% YoY), 총이익률 73% 발표. 전년 분기 재고평가손실 영향으로 GAAP 총이익률 비교 착시 주의.
 
 **ENVX (델라웨어·프리몬트 CA / Nasdaq)**
-- SEC 2026 Q2 Form 10-Q: https://www.sec.gov/Archives/edgar/data/1828318/000182831826000063/envx8k-10282026ex991pr.htm
+- SEC 2026 Q2 Form 10-Q: https://www.sec.gov/Archives/edgar/data/1828318/000182831826000056/envx-20260705.htm
 - 2026-11-12 Q3 기업 발표: https://ir.enovix.com/news-releases/news-release-details/drones-drive-strong-envx-revenue-growth
 - 2026-11-13 Q3 SEC 10-Q: https://www.sec.gov/Archives/edgar/data/1828318/000182831826000072/envx-20261004.htm
 - 2027 매출 전망 $65m~$85m은 회사 가이던스. 스마트폰향 AI-1은 최신 에너지밀도 기준 미달로 시스템 실증을 진행하지 않기로 했으므로 성공 신호로 과대 표시하지 않는다.
