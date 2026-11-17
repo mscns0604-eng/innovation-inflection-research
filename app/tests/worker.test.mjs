@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName,cikFromVerifiedSecUrl,secIssuerIdentityMatches} from '../dist/worker.mjs';
+import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName,cikFromVerifiedSecUrl,secIssuerIdentityMatches,form4IssuerMatches} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
  const r=scoreRange({});
@@ -46,6 +46,13 @@ test('CIK from primary SEC filing source must be verified against submissions ti
  assert.equal(secIssuerIdentityMatches({cik:1440660,tickers:['PRCT']},'PRCT','0001588978'),false);
  assert.equal(secIssuerIdentityMatches({cik:1588978,tickers:['OTHER']},'PRCT','0001588978'),false);
  assert.equal(secIssuerIdentityMatches({cik:1588978,tickers:[]},'PRCT','0001588978'),false);
+});
+test('Form 4 reported issuer must match the target ticker and corporate CIK',()=>{
+ const xml='<ownershipDocument><issuer><issuerCik>1588978</issuerCik><issuerTradingSymbol>PRCT</issuerTradingSymbol></issuer></ownershipDocument>';
+ assert.equal(form4IssuerMatches(xml,'PRCT','0001588978'),true);
+ assert.equal(form4IssuerMatches(xml,'OTHER','0001588978'),false);
+ assert.equal(form4IssuerMatches(xml,'PRCT','0001440660'),false);
+ assert.equal(form4IssuerMatches('<html>error</html>','PRCT','0001588978'),false);
 });
 test('bio risk column has explicit wrapping and bounded width',()=>{
  const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
