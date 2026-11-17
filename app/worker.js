@@ -19,6 +19,7 @@ const MAX_REQUESTS = 18;
 const MAX_RUN_MS = 39000;
 const SEC_TIMEOUT_MS = 4800;
 const SOURCE_ROOT = 'https://www.sec.gov';
+const SUBMISSIONS_ROOT = 'https://data.sec.gov';
 const ALLOW_SORT = {priority:"COALESCE(s.review_rank,101) ASC, CASE COALESCE(s.research_status,c.research_status) WHEN 'RESEARCH_PRIORITY' THEN 0 WHEN 'CONDITIONAL' THEN 1 WHEN 'WATCH' THEN 2 ELSE 3 END, c.trade_last_date DESC",ticker:"c.ticker ASC",amount:"c.buy_amount_usd DESC",recent:"c.trade_last_date DESC"};
 const JSON_HEADERS = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin'};
 const iso = () => new Date().toISOString();
@@ -172,11 +173,23 @@ export function parseForm4(xml){
  }
  return {status:matches.length>40?'PARTIAL_UNVERIFIED':'UNVERIFIED',transactions};
 }
+export function rawForm4DocumentName(name){
+ if(typeof name!=='string')return null;
+ const raw=name.replace(/^xslF\d{3}X\d{2}\//i,'');
+ return /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,119}$/.test(raw)&&!raw.includes('..')?raw:null;
+}
+export function secSourceUrl(path){
+ if(typeof path!=='string')throw Error('SEC_INVALID_SOURCE_PATH');
+ if(/^\/submissions\/CIK\d{10}\.json$/.test(path))return SUBMISSIONS_ROOT+path;
+ if(path==='/files/company_tickers.json')return SOURCE_ROOT+path;
+ if(/^\/Archives\/edgar\/data\/\d{1,10}\/\d{18}\/[A-Za-z0-9_.-]{1,120}$/.test(path)&&!path.includes('..'))return SOURCE_ROOT+path;
+ throw Error('SEC_INVALID_SOURCE_PATH');
+}
 async function secText(path,ctx){
  if(++ctx.requests>MAX_REQUESTS)throw Error('REQUEST_BUDGET_EXCEEDED');
  if(Date.now()>ctx.deadline)throw Error('TIME_BUDGET_EXCEEDED');
  const email=ctx.email;
- const target=SOURCE_ROOT+path,headers={'User-Agent':'IIR-Research/0.1 contact '+email,'Accept':'application/json, application/xml, text/xml, */*'};
+ const target=secSourceUrl(path),headers={'User-Agent':'IIR-Research/0.1 contact '+email,'Accept':'application/json, application/xml, text/xml, */*'};
  let attempts=0;
  while(attempts<2){
   attempts++;
@@ -216,12 +229,16 @@ async function processCompany(db,c,ctx,lookup){
  for(let i=0;i<filings.form.length&&checked<2&&ctx.files<MAX_FILINGS;i++){
   if(!['4','4/A'].includes(filings.form[i]))continue;
   const accession=filings.accessionNumber?.[i],name=filings.primaryDocument?.[i],accepted=filings.acceptanceDateTime?.[i]||null,filingDate=filings.filingDate?.[i];
-  if(!accession||!name||!/^[\w.-]{1,120}$/.test(name)||!/^\d{10}-\d{2}-\d{6}$/.test(accession))continue;
-  if(filingDate&&filingDate<'2026-08-01')continue;
+  if(!accession||!name||!/^\d{10}-\d{2}-\d{6}$/.test(accession))continue;
+  // SEC submissions may point to XSL-rendered HTML; the raw XML is in the filing root.
+  const documentName=rawForm4DocumentName(name);
+  if(!documentName)continue;
+  const cutoff=new Date(Date.now()-180*86400000).toISOString().slice(0,10);
+  if(filingDate&&filingDate<cutoff)continue;
   checked++;ctx.files++;
   const exists=await db.prepare('SELECT id FROM filings WHERE cik=? AND accession_number=?').bind(cik,accession).first();
   if(exists)continue;
-  const url='/Archives/edgar/data/'+Number(cik)+'/'+accession.replace(/-/g,'')+'/'+name;
+  const url='/Archives/edgar/data/'+Number(cik)+'/'+accession.replace(/-/g,'')+'/'+documentName;
   const body=await secText(url,ctx);
   const parsed=parseForm4(body);
   const sourceUrl=SOURCE_ROOT+url;
