@@ -11,6 +11,7 @@
 - [STANDARD.md](STANDARD.md): 투자 가설, 범위, 신호의 정의
 - [BIO_QUARTERLY_POLICY.md](BIO_QUARTERLY_POLICY.md): 승인된 바이오 확장·분기별 신규 발굴·이월·제외 운용
 - [research/2026-11-13_q4_candidate_intake.md](research/2026-11-13_q4_candidate_intake.md): 2026Q4 신규 10개 근거·위험·후속 검증 목록
+- [research/2026-11-17_q4_additional_five.md](research/2026-11-17_q4_additional_five.md): 추가 미국 기술·바이오 예비후보 5개(활성 목록·DB 미반영, SEC 근거)
 - [RUBRIC.md](RUBRIC.md): 시범 가중치·판정 규칙
 - [WORKFLOW.md](WORKFLOW.md): 조사·검증·보관 순서
 - [BACKTEST_PROTOCOL.md](BACKTEST_PROTOCOL.md): 2021년 이후 백테스트 규정
