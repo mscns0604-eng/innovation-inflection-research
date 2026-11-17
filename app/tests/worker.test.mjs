@@ -69,6 +69,15 @@ test('SEC source records are checked before CIK is persisted, and NONE is not cl
  assert.match(code,/NOT_COLLECTED/);
  assert.match(code,/perCompanyErrors>=2/);
 });
+test('Form 4 accession is globally deduplicated even when owner and issuer CIK differ',()=>{
+ const code=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ const migration=readFileSync(new URL('../migrations/0008_sec_accession_uniqueness.sql',import.meta.url),'utf8');
+ assert.match(code,/SELECT id,company_ticker FROM filings WHERE accession_number=\? LIMIT 1/);
+ assert.match(code,/SEC_ACCESSION_ISSUER_CONFLICT/);
+ assert.match(code,/SELECT id FROM filings WHERE company_ticker=\? AND accession_number=\? LIMIT 1/);
+ assert.match(migration,/CREATE UNIQUE INDEX IF NOT EXISTS idx_filings_accession_unique ON filings\(accession_number\)/);
+ assert.doesNotMatch(migration,/^\s*DELETE\s+FROM\s+filings/im);
+});
 test('SEC error page cannot become a signal',()=>{
  assert.deepEqual(parseForm4('HTTP 403'),{status:'UNSUPPORTED_XML',transactions:[]});
 });
