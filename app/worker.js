@@ -177,6 +177,13 @@ export function parseForm4(xml){
  }
  return {status:matches.length>40?'PARTIAL_UNVERIFIED':'UNVERIFIED',transactions};
 }
+export function form4IssuerMatches(xml,ticker,cik){
+ if(typeof xml!=='string'||!/<ownershipDocument[\s>]/i.test(xml))return false;
+ const issuer=(xml.match(/<issuer>[\s\S]*?<\/issuer>/i)||[''])[0];
+ const filingCik=xmlValue(issuer,'issuerCik').padStart(10,'0');
+ const filingTicker=xmlValue(issuer,'issuerTradingSymbol').toUpperCase();
+ return filingCik===cik&&filingTicker===ticker;
+}
 export function rawForm4DocumentName(name){
  if(typeof name!=='string')return null;
  const raw=name.replace(/^xslF\d{3}X\d{2}\//i,'');
@@ -256,6 +263,7 @@ async function processCompany(db,c,ctx,lookup){
   const body=await secText(url,ctx);
   const parsed=parseForm4(body);
   if(parsed.status==='UNSUPPORTED_XML')throw Error('SEC_UNSUPPORTED_FORM4_XML');
+  if(!form4IssuerMatches(body,c.ticker,cik))throw Error('SEC_FORM4_ISSUER_MISMATCH');
   const sourceUrl=SOURCE_ROOT+url;
   await db.prepare('INSERT OR IGNORE INTO filings(cik,company_ticker,accession_number,filing_type,accepted_at_utc,published_at_utc,source_url,fetched_at_utc,parse_status) VALUES(?,?,?,?,?,?,?,?,?)')
    .bind(cik,c.ticker,accession,filings.form[i],accepted,accepted,sourceUrl,iso(),parsed.status).run();
