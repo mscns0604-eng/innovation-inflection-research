@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 앱 운영 패치 v0.3.5 — 2026-11-17 — SEC 실환경 연결 진단·수집 중복 방지
+
+- 일시적 독립 Cloudflare Worker에서 SEC 기업 공시 목록, Form 4 원문, 티커 JSON **모두 HTTP 200** 확인(각 174ms/200ms/23ms). Cloudflare 전체가 SEC에 차단된 것은 아님. 진단 Worker는 검사 후 삭제.
+- 단기 시험 Cron은 플랫폼 반영 지연으로 실행되지 않았으며 제거. 본래 2개 정기 일정 유지.
+- SEC 404·401/403/429 응답 오류에 `SUBMISSIONS`/`FORM4_XML`/`TICKER_MAP` 원인 단계를 추가하고 요청 타임아웃 식별 보완.
+- Form 4의 발행회사 CIK와 제출자·보고의무자 CIK가 다를 수 있으므로 접수번호를 **전역 중복키**로 취급. `0008_sec_accession_uniqueness.sql` 생성 및 운영 D1 UNIQUE 인덱스 적용; 과거 거래·공시는 보존.
+- 실제 공식 형식의 모의 수집·코드 컴파일 및 바이오 화면 검증 완료. Worker 최종 버전 `cc93b212-c857-45e9-9fbc-31b13b3543a6` 100% 배포. PC 오프라인으로 전체 Node 테스트는 이번 턴에 미실행.
+- 수정 후 **운영 자동수집 성공 실행 기록은 미확인**. 조건별 원인 분기 및 다음 Cron 점검 계획은 `research/2026-11-17_sec_ingestion_diagnosis.md` 참조.
+
 ## 앱 운영 패치 v0.3.4 — 2026-11-17 — SEC CIK 정정·수집 안전성·바이오 줄바꿈
 
 - SEC 기업 인증 근거에서 CIK를 추출하고, SEC submissions의 기업번호와 티커뿐 아니라 Form 4 XML 내부의 발행회사 CIK·티커까지 모두 일치한 다음에만 거래 저장. 보고의무자 CIK와 발행회사 CIK는 구분. 잘못된 PRCT 구 CIK 0001440660→0001588978 정정, SERV/OUST/TMDX를 포함한 누락 13개 및 CADL 식별번호 추가.
