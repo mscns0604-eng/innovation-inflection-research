@@ -78,9 +78,10 @@ body.detail-open{overflow:hidden}
 .topic-buttons button.active{background:#23655f;border-color:#58c6b7;color:#edfffb;font-weight:800}
 .bio-tag{display:inline-flex;align-items:center;white-space:nowrap;padding:5px 9px;border-radius:7px;margin:2px 4px 2px 0;border:1px solid #3a5270;background:#243955;color:#d7ebff;font-size:11px;font-weight:750}
 .bio-dementia{border-color:#598bb4;color:#bcdeff}.bio-aging{border-color:#956bbd;color:#e6c5ff}.bio-cancer{border-color:#ac7577;color:#ffd0cf}.bio-alopecia{border-color:#4b9c73;color:#b8efca}.bio-applied_ai{border-color:#5aa5a9;color:#b5f5f3}
-#bio-table table{min-width:1250px}
+#bio-table table{min-width:1430px}
 #bio-table td{line-height:1.55}
-#bio-table .risk{max-width:210px}
+#bio-table th:nth-child(8),#bio-table td:nth-child(8){width:245px;min-width:245px;max-width:245px;white-space:normal}
+#bio-table td:nth-child(8) .risk{display:block;width:100%;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.65}
 #bio-table .bio-tech{max-width:220px}
 @media(max-width:600px){.radar-tab{flex:1;padding:12px 9px;font-size:12px}.bio-topics{padding:12px}.topic-buttons button{padding:8px 11px}#bio-table table{min-width:1050px}}
 
@@ -189,8 +190,8 @@ function insiderPriceMarkup(c){
  '<div class="tiny muted">'+esc(c.secondary_trade_rows>0?'보조자료 포함':'매매성격 검증 전')+'</div>';
 }
 
-var label=function(s){return ({STRONG_CLUSTER:'강한 클러스터',CLUSTER:'클러스터',SINGLE:'단독 매수',UNVERIFIED:'검증 대기',NONE:'매수 미확인',RESEARCH_PRIORITY:'우선 검토',WATCH:'관찰',ON_HOLD:'위험 보류',CONDITIONAL:'조건부',TECH_INFLECTION:'기술 변곡점',BUSINESS_INFLECTION:'사업 변곡점',MIXED:'복합',UNKNOWN:'미확인'})[s]||s||'미확인'};
-var signalClass=function(s){return s==='STRONG_CLUSTER'?'strong':s==='UNVERIFIED'?'unknown':''};
+var label=function(s){return ({STRONG_CLUSTER:'강한 클러스터',CLUSTER:'클러스터',SINGLE:'단독 매수',UNVERIFIED:'검증 대기',NONE:'매수 미확인',FORM4_NO_P:'확인분 P 없음',NOT_COLLECTED:'SEC 미수집',RESEARCH_PRIORITY:'우선 검토',WATCH:'관찰',ON_HOLD:'위험 보류',CONDITIONAL:'조건부',TECH_INFLECTION:'기술 변곡점',BUSINESS_INFLECTION:'사업 변곡점',MIXED:'복합',UNKNOWN:'미확인'})[s]||s||'미확인'};
+var signalClass=function(s){return s==='STRONG_CLUSTER'?'strong':['UNVERIFIED','NOT_COLLECTED','FORM4_NO_P'].includes(s)?'unknown':''};
 var priority=function(s){return s==='RESEARCH_PRIORITY'?0:s==='CONDITIONAL'?1:s==='WATCH'?2:s==='ON_HOLD'?3:4};
 var entryLabel=function(s){s=String(s||'');return s.startsWith('ON_HOLD')?'진입 위험 보류':s.startsWith('CONDITIONAL')||s.startsWith('CAUTION')?'조건부 · 진입 검증 필요':'관찰 · 판단 유보'};
 var persist=function(){if(!storageOK)return;try{localStorage.setItem('iir-watch',JSON.stringify(Array.from(saved)));localStorage.setItem('iir-filters',JSON.stringify({bio:el('bio').value,sort:el('sort').value}));}catch(e){}};
@@ -230,7 +231,7 @@ function renderBio(){
  '<td><div class="bio-tags">'+bioTagsMarkup(c)+'</div></td>'+
  '<td><div class="bio-tech">'+esc(c.summary||c.theme||'기술 근거 확인 전')+'</div><div class="tiny muted">'+esc(c.bio_lead_asset?'주요 프로그램: '+c.bio_lead_asset:'개별 파이프라인 검증 전')+'</div><div class="tiny muted">'+esc(c.bio_lead_phase?'기업 발표 단계: '+c.bio_lead_phase:'임상/연구 단계 원문 검증 전')+'</div></td>'+
  '<td>'+(c.next_check_trigger?'<strong>'+esc(c.next_check_trigger)+'</strong>':'<span class="muted">공식 확인 일정 없음</span>')+'<div class="tiny muted">'+esc(c.next_check_date?'다음 점검 '+date(c.next_check_date):'회사 예상 일정 · 세부일 검증 전')+'</div></td>'+
- '<td><span class="symbol '+signalClass(c.signal_type)+'">'+esc(label(c.signal_type))+'</span><div class="tiny muted">'+esc(money(c.buy_amount_usd))+' · 거래 성격 검증 전</div></td>'+
+ '<td><span class="symbol '+signalClass(c.signal_type)+'">'+esc(label(c.signal_type))+'</span><div class="tiny muted">'+esc(money(c.buy_amount_usd))+' · '+esc(c.sec_form4_count?'SEC 원문 '+c.sec_form4_count+'건 확인 · 거래 성격 검증 전':'SEC Form 4 수집 대기')+'</div></td>'+
  '<td class="mono">'+latestCloseMarkup(c)+'</td>'+
  '<td><div class="risk">'+esc(c.risk_note||'검증 전')+'</div></td>'+
  '<td><strong>'+esc(c.research_quarter||'미등록')+'</strong><div class="tiny muted">'+esc(origin)+'</div></td>'+
