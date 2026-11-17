@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName} from '../dist/worker.mjs';
+import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName,cikFromVerifiedSecUrl,secIssuerIdentityMatches} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
  const r=scoreRange({});
@@ -36,6 +36,31 @@ test('SEC submissions and raw Form 4 use the correct official host and safe docu
  assert.equal(secSourceUrl('/Archives/edgar/data/926282/000119312526458287/'+rawForm4DocumentName('xslF345X06/ownership.xml')),'https://www.sec.gov/Archives/edgar/data/926282/000119312526458287/ownership.xml');
  assert.equal(rawForm4DocumentName('../../secrets'),null);
  assert.throws(()=>secSourceUrl('https://attacker.invalid/'),/SEC_INVALID_SOURCE_PATH/);
+});
+test('CIK from primary SEC filing source must be verified against submissions ticker',()=>{
+ assert.equal(cikFromVerifiedSecUrl('https://www.sec.gov/Archives/edgar/data/1588978/000158897826000009/prct-20251231.htm'),'0001588978');
+ assert.equal(cikFromVerifiedSecUrl('https://www.sec.gov/Archives/edgar/data/1832483/000183248326000051/serv-20260930.htm'),'0001832483');
+ assert.equal(cikFromVerifiedSecUrl('https://evil.invalid/Archives/edgar/data/1832483/000183248326000051/x.xml'),null);
+ assert.equal(cikFromVerifiedSecUrl('https://ir.candeltx.com/resources/investor-faqs/'),null);
+ assert.equal(secIssuerIdentityMatches({cik:1588978,tickers:['PRCT']},'PRCT','0001588978'),true);
+ assert.equal(secIssuerIdentityMatches({cik:1440660,tickers:['PRCT']},'PRCT','0001588978'),false);
+ assert.equal(secIssuerIdentityMatches({cik:1588978,tickers:['OTHER']},'PRCT','0001588978'),false);
+ assert.equal(secIssuerIdentityMatches({cik:1588978,tickers:[]},'PRCT','0001588978'),false);
+});
+test('bio risk column has explicit wrapping and bounded width',()=>{
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.match(html,/#bio-table td:nth-child\(8\) \.risk\{[^}]*white-space:normal;overflow-wrap:anywhere;word-break:break-word/);
+ assert.match(html,/#bio-table th:nth-child\(8\),#bio-table td:nth-child\(8\)\{width:245px;min-width:245px;max-width:245px;white-space:normal\}/);
+});
+test('SEC source records are checked before CIK is persisted, and NONE is not claimed as a confirmed absence',()=>{
+ const code=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ const secIdentity=code.indexOf('if(!secIssuerIdentityMatches(sub,c.ticker,cik))');
+ const cikUpdate=code.indexOf('UPDATE companies SET cik=?');
+ assert.ok(secIdentity>0&&cikUpdate>secIdentity);
+ assert.match(code,/sec_form4_count/);
+ assert.match(code,/FORM4_NO_P/);
+ assert.match(code,/NOT_COLLECTED/);
+ assert.match(code,/perCompanyErrors>=2/);
 });
 test('SEC error page cannot become a signal',()=>{
  assert.deepEqual(parseForm4('HTTP 403'),{status:'UNSUPPORTED_XML',transactions:[]});
