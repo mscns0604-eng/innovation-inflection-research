@@ -259,8 +259,10 @@ test('biotech view uses burgundy theme and keeps existing dark tech mode',()=>{
  assert.match(html,/function safeSourceUrl\(raw\)/);
  assert.match(html,/bio_lead_phase/);
  assert.match(html,/종가 수집 대기/);
- for(const symbol of ['SERV','AUR','VYGR','BIOA','MANE','CGON','RXRX','AURA','CADL','OUST','TMDX','ANVS','FATE'])
-  assert.match(html,new RegExp(symbol+":'(NYSE|NASDAQ):"+symbol+"'"));
+ assert.match(html,/var candidate=data\.find\(function\(c\)\{return c\.ticker===t\}\)/);
+ assert.match(html,/\['NASDAQ','NYSE'\]\.includes\(exchange\)/);
+ assert.match(html,/exchange\+':'\+t/);
+ assert.doesNotMatch(html,/var map=\{ADTN:/);
 });
 test('candidate API exposes primary evidence and biotech phase separately from insider signal',()=>{
  const code=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
@@ -308,6 +310,33 @@ test('US-only filter label and revised chart symbols appear in both views',()=>{
  const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
  assert.match(html,/미국 법인 · 미국 본사 · NYSE\/Nasdaq 보통주만 표시/);
  assert.match(html,/한국 증권사별 실제 주문 가능 여부는 계좌에서 확인/);
- for(const t of ['OUST','TMDX','ANVS','FATE'])assert.match(html,new RegExp(t+":'(NYSE|NASDAQ):"+t+"'"));
- for(const t of ['APTV','GFS','SOPH','ACIU'])assert.doesNotMatch(html,new RegExp(t+":'(NYSE|NASDAQ):"+t+"'"));
+ assert.match(html,/var exchange=candidate&&candidate\.primary_exchange/);
+ assert.match(html,/\['NASDAQ','NYSE'\]\.includes\(exchange\)/);
+ assert.match(html,/공식 등록 확인/);
+});
+
+test('2026Q4 extra candidates are added without placeholder prices, fake SEC trades or old-row deletion',()=>{
+ const sql=readFileSync(new URL('../migrations/0009_q4_five_additional.sql',import.meta.url),'utf8');
+ for(const ticker of ['ABSI','CGEM','SLDP','BFLY','ENVX']){
+  assert.match(sql,new RegExp("VALUES\\('"+ticker+"'"));
+ }
+ assert.equal((sql.match(/INSERT OR IGNORE INTO companies\\(/g)||[]).length,5);
+ assert.equal((sql.match(/INSERT OR IGNORE INTO research_quarter_entries\\(/g)||[]).length,5);
+ assert.equal((sql.match(/'NEW','RESEARCHING'/g)||[]).length,5);
+ assert.match(sql,/NCT07317544/);
+ assert.match(sql,/NCT05143996/);
+ assert.doesNotMatch(sql,/DELETE FROM|DROP TABLE|UPDATE companies SET seed_price_usd|INSERT INTO insider_transactions/i);
+});
+
+test('per-company SEC scan state preserves last success and does not imply total lack of insider P',()=>{
+ const schema=readFileSync(new URL('../migrations/0010_sec_scan_coverage.sql',import.meta.url),'utf8');
+ const src=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ assert.match(schema,/CREATE TABLE IF NOT EXISTS company_sec_scan_state/);
+ assert.match(src,/scan_window_days=180/);
+ assert.match(src,/NEW_P_UNVERIFIED/);
+ assert.match(src,/RECENT_FORM4_CONSIDERED/);
+ assert.match(src,/NO_RECENT_FORM4_IN_FEED/);
+ assert.match(src,/last_success_at_utc=excluded\.last_success_at_utc/);
+ assert.match(src,/last_result='FAILED'/);
+ assert.match(src,/bio_trials:bioTrials\.results\|\|\[\]/);
 });
