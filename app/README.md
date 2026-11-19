@@ -8,7 +8,7 @@
 
 Node.js 22.18+와 cf CLI 사용. `npm install`, `npm test`, `npm run build`, `npm run deploy` 순서. cf 로그인은 본인 계정으로 수행합니다. `scripts/build.mjs`는 `web.html`을 `worker.js`에 주입하여 `dist/worker.mjs`를 생성합니다. `dist`는 .gitignore 처리합니다. API로 첫 배포를 수행했으며 GitHub 푸시가 자동 배포된다고 가정하지 않습니다.
 
-Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql`, `0005_q4_candidate_intake.sql`, `0006_us_company_only.sql`, `0007_sec_identity_repair.sql`, `0008_sec_accession_uniqueness.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
+Cloudflare DB: `iir-investment-radar` (APAC). 신규 환경에서는 `migrations/0001_init.sql`, `0002_historical_seed.sql`, `0003_market_close.sql`, `0004_bio_quarterly.sql`, `0005_q4_candidate_intake.sql`, `0006_us_company_only.sql`, `0007_sec_identity_repair.sql`, `0008_sec_accession_uniqueness.sql`, `0009_q4_five_additional.sql`, `0010_sec_scan_coverage.sql` 순서로 적용. 초기 가격은 2026-11-09 **역사적 조사값**이고 검증 전 SEC 신호입니다.
 
 ## 공개 API
 
@@ -77,3 +77,16 @@ UTC `30 23 * * MON-FRI`(KST 화~토 08:30), UTC `30 11 * * MON-FRI`(KST 월~금 
 - ANVS: 2026년 10월 NYSE 상장요건 통지 및 11월 증자·워런트 위험이 큰 **고위험 조사 후보**. 01~10은 추천/확정 수익순위 아님.
 - 국내 증권사별 매매 가능 여부는 실시간 검증하지 않으므로 포털/레이더 모두 거래가능 확답을 제공하지 않음.
 - 연구 기록: `research/2026-11-13_us_only_reselection.md`.
+
+## 2026-11-19 후보 25개 및 SEC 수집 상태 가시화 (v0.3.6)
+
+- 미국 법인·본사·NYSE/Nasdaq 기준을 재확인한 기술 3개(SLDP/BFLY/ENVX), 바이오 2개(ABSI/CGEM)를 분기 `NEW, RESEARCHING`으로 등록. 기존 10+10을 교체하거나 과거 투자기록을 삭제하지 않음.
+- 새로운 5종목에 임의 가격, 내부자 현금 매수 확정, 백테스트 없는 총점 입력 금지. 종가는 크론이 순차 수집한 후 날짜와 함께 표시.
+- 바이오 신규 임상 2건 (ABSI NCT07317544, CGEM NCT05143996)은 공식 ClinicalTrials.gov 링크로 연결. **등록번호는 확인했으나 진행상태·결과를 실시간으로 동기화하지는 않음.**
+- 추가 기업 차트는 고정 티커 목록이 아니라 SEC 확인된 `primary_exchange` (NASDAQ/NYSE)에서 TradingView 심볼을 결정.
+- `company_sec_scan_state`로 기업별 마지막 수집 성공/실패, 회차당 고려한 최근 Form 4 수, 새 미검증 P 거래행 수를 기록. 초기 마이그레이션 직후 기록이 비어 있는 것은 정상이며 **새 코드의 Cron 순회 완료 후** 채워짐.
+- Form 4 코드 P 취득 금액과 과거 초기 스크리닝 매수 추정액을 구분하여 노출하고, 시장 장내 자발적 매수라는 뜻으로 표시하지 않음.
+- 공개 API 새 응답 필드: 후보 `sec_scan_last_success_at`, `sec_scan_result`, `sec_scan_examined_count`, `sec_p_reported_value_usd`; 상세 `bio_trials`; 상태 `sec.scanned_companies`, `sec.eligible_companies`.
+- 운영 직전 기존 정기 SEC 및 일봉 Cron은 성공으로 기록됨. 신규 코드의 실제 정기 실행 결과는 배포 후의 `/api/status` 및 D1 `pipeline_runs`로 별도 재검증 필요.
+- 읽기 전용 화면·API는 인증 없이, 관리자 갱신·중지 API는 길이 24 이상의 서버 `ADMIN_TOKEN`이 **실제로 설정되었을 때만** 작동. 현재 비밀 설정이 없는 상태에서는 403 정상 차단; 임의 토큰 생성·공개 금지.
+- 아직 미구현: 정식 시세 라이선스 API, ClinicalTrials.gov/FDA 자동 임상·규제 갱신, 자동 신규기업 발견, 사람 검증 편집 화면, 검증 가능한 AI 점수·백테스트.
