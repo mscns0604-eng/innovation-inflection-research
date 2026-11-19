@@ -424,3 +424,37 @@ test('calendar inline JavaScript is syntactically valid and bounded request is p
  assert.match(html,/Primary Completion Date/);
  assert.match(html,/DATE_CONFIRMED|DAY_CONFIRMED/);
 });
+
+test('clinical event price charts require validated US exchange; lazy loading and cleanup are bounded',async()=>{
+ const page=readFileSync(new URL('../calendar.html',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ assert.match(page,/function validExchangeSymbol\(e\)/);
+ assert.match(page,/\['NYSE','NASDAQ'\]\.includes\(e\.primary_exchange\)/);
+ assert.match(page,/function showStockChart\(eventId\)/);
+ assert.match(page,/TradingView/);
+ assert.match(page,/https:\/\/s3\.tradingview\.com\/external-embedding\/embed-widget-advanced-chart\.js/);
+ assert.match(page,/chartDialog\.addEventListener\('close',chartCleanup\)/);
+ assert.match(page,/chartWarningTimer=setTimeout/);
+ assert.match(page,/12000\)/);
+ assert.match(page,/data-chart/);
+ assert.match(page,/chartWidget\.replaceChildren\(\)/);
+ assert.match(source,/primary_exchange:m\.primary_exchange/);
+ assert.match(source,/primary_exchange:t\.primary_exchange/);
+ assert.match(source,/primary_exchange:a\.primary_exchange/);
+ const resp=await worker.fetch(new Request('https://iir.example/calendar'));
+ assert.equal(resp.status,200);
+ const csp=resp.headers.get('content-security-policy')||'';
+ assert.match(csp,/script-src 'unsafe-inline' https:\/\/s3\.tradingview\.com/);
+ assert.match(csp,/frame-src https:\/\/\*\.tradingview\.com/);
+});
+test('clinical timeline distribution is a visual count of start months, not fabricated exact readout dates',()=>{
+ const html=readFileSync(new URL('../calendar.html',import.meta.url),'utf8');
+ assert.match(html,/id="distribution-bars"/);
+ assert.match(html,/function drawDistribution\(events\)/);
+ assert.match(html,/for\(let offset=0;offset<12;offset\+\+\)/);
+ assert.match(html,/data-month/);
+ assert.match(html,/기간 예상은 시작 월 기준으로 집계/);
+ assert.match(html,/<option value="strict" selected>/);
+ assert.match(html,/혼합 1\/2상도 포함/);
+ assert.match(html,/임상 주요 평가 완료일은 결과 발표일이 아닙니다/);
+});
