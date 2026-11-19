@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-13",
+  "updated_at": "2026-11-19",
   "portal_title": "MY WORKSPACE",
   "items": [
     {
@@ -28,6 +28,19 @@
       "label": "바이오",
       "environment": "production",
       "order": 20
+    },
+    {
+      "id": "iir-clinical-calendar",
+      "title": "임상 2상 이상 캘린더",
+      "subtitle": "Clinical Catalyst Calendar",
+      "description": "미국 상장 바이오 후보의 임상 결과 발표·회사 예상 기간·FDA 일정과 ClinicalTrials.gov 주요 평가 완료일을 구분해 확인합니다.",
+      "href": "https://iir-innovation-radar.shnboy.workers.dev/calendar",
+      "category": "invest",
+      "visual": "bio",
+      "icon": "dna",
+      "label": "임상 일정",
+      "environment": "production",
+      "order": 25
     },
     {
       "id": "auction-radar",
