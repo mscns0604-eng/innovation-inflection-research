@@ -12,12 +12,13 @@ const page=readFileSync(path.join(root,'index.html'),'utf8');
 const worker=(await import('../dist/worker.mjs')).default;
 
 test('public links are unique and group correctly',()=>{
- assert.equal(manifest.items.length,6);
- assert.equal(manifest.items.filter(x=>x.environment==='production').length,3);
+ assert.equal(manifest.items.length,7);
+ assert.equal(manifest.items.filter(x=>x.environment==='production').length,4);
  assert.equal(manifest.items.filter(x=>x.environment==='preview').length,2);
  assert.equal(new Set(manifest.items.map(x=>x.href)).size,manifest.items.length);
- assert.equal(manifest.items.filter(x=>x.category==='invest').length,2);
+ assert.equal(manifest.items.filter(x=>x.category==='invest').length,3);
  assert.ok(manifest.items.some(x=>x.href.includes('auction-radar-v02.shnboy.workers.dev')));
+ assert.ok(manifest.items.some(x=>x.id==='iir-clinical-calendar'&&x.href.endsWith('/calendar')&&x.environment==='production'));
 });
 test('worker serves a complete portable portal page',async()=>{
  const r=await worker.fetch(new Request('https://portal.example/'));
