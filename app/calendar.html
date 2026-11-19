@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17101c"><meta name="description" content="미국 상장 바이오기업 임상 2상 이상 결과 발표·임상 완료·규제 이벤트 캘린더">
+<title>IIR | 2상 이상 임상 캘린더</title>
+<style>
+:root{font-family:Pretendard,"Malgun Gothic",system-ui,sans-serif;color:#f4eaf2;background:#110e18;color-scheme:dark;font-size:14px}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;min-width:320px;background:radial-gradient(ellipse at 86% 0%,#63335055,transparent 48%),#110e18;min-height:100vh}
+button,input,select{font:inherit}button,a{cursor:pointer}a{color:#ffaecb}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #ffabc8;outline-offset:2px}button{border:1px solid #63465b;background:#322132;color:#f8eaf2;border-radius:9px;padding:10px 12px}
+button:hover{border-color:#cb87a8}.shell{max-width:1330px;margin:auto;padding:26px 26px 45px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:40px;flex-wrap:wrap}.brand{font-weight:900;letter-spacing:.07em;color:#ffd5e2}.crumbs{display:flex;gap:14px;align-items:center;font-size:12px;color:#dcb8c9}.crumbs a{text-decoration:none}
+.hero{margin-bottom:26px}.eyebrow{color:#ea8ab2;font-size:11px;font-weight:850;letter-spacing:2.1px}.hero h1{margin:10px 0 12px;font-size:clamp(28px,4.4vw,47px);letter-spacing:-1.5px}.hero p{max-width:850px;line-height:1.8;color:#bca6b8;margin:0}.important{color:#ffc992}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:20px 0 24px}.metric{padding:17px 19px;background:#221824;border:1px solid #563a4e;border-radius:13px}.metric small{color:#ba94a9;display:block;margin-bottom:8px}.metric strong{font-size:27px;line-height:1.15}.metric span{color:#a78b9b;font-size:11px}
+.toolbar{background:#221823;border:1px solid #50384c;padding:17px;border-radius:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:15px}
+.toolbar input,.toolbar select{background:#130e19;color:#f3e7ef;border:1px solid #694357;border-radius:8px;padding:11px;min-height:42px}.toolbar input{min-width:225px;flex:1}
+.view-toggle{display:flex;gap:7px}.view-toggle button.active{background:#9c3c6a;border-color:#ed9cbf}.filters-note{font-size:11px;color:#b9a0ae;line-height:1.55}
+.calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin:20px 0 13px}.calendar-heading h2{font-size:23px;margin:0}.calendar-heading .navigation{display:flex;gap:8px;align-items:center}.calendar-heading .navigation button{min-width:45px}.calendar-heading .navigation button.today{min-width:auto}
+.panel{border:1px solid #594055;background:#1e1521;border-radius:15px;padding:14px}
+.weekdays,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.weekdays{margin-bottom:7px}.weekdays span{text-align:center;color:#b893a8;font-size:12px;font-weight:700;padding:9px 3px}
+.cell{border:1px solid #432e40;border-radius:10px;min-height:105px;background:#261b2a;padding:9px 7px;overflow:hidden}.cell.dim{opacity:.34}.cell .day{font-size:12px;color:#bcb0bd;margin:0 0 8px 2px}.cell .day.today{color:#ffb9d1;font-weight:900}.dot{display:block;font-size:10px;line-height:1.3;padding:4px 5px;background:#673253;color:#f6d7e4;border-radius:5px;margin-bottom:4px;overflow-wrap:anywhere;max-height:38px}.dot.phase3{background:#34456e;color:#caddff}.dot.fda{background:#695137;color:#ffe1a1}.dot:hover{filter:brightness(1.25)}
+.month-events{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.range{background:#362236;border:1px solid #78506a;border-radius:7px;padding:8px 9px;font-size:11px;line-height:1.5;max-width:100%;overflow-wrap:anywhere}.range b{color:#f9c6dc}.range .muted{font-size:10px;color:#d2b2c3}
+.section-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:24px;margin-bottom:12px}.section-head h3{font-size:17px;margin:0}.section-head small{color:#bda4b3}
+.event-list{display:grid;gap:10px}.event{border:1px solid #573d50;border-radius:12px;background:#261b29;padding:15px;display:grid;grid-template-columns:162px minmax(0,1fr);gap:20px}.event-date{font-weight:800;color:#f5b3cd}.event-date .small{display:block;font-size:11px;font-weight:500;color:#c6a8b9;margin-top:5px}.event h4{font-size:16px;margin:0 0 7px;line-height:1.55}.ticker{display:inline-block;font-weight:850;padding:3px 7px;margin-right:7px;background:#60324a;border-radius:5px;color:#ffd4e4;font-size:12px}.event p{color:#c8acbc;font-size:12px;line-height:1.7;margin:5px 0}.event .links{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:12px}.tag{border:1px solid #75536a;border-radius:7px;font-size:11px;color:#e9c5d3;display:inline-block;padding:4px 7px;margin:2px}.tag.phase3{border-color:#6386b5;color:#c6deff}.tag.alert{border-color:#aa785d;color:#ffcaab}.muted{color:#b3a0ae}.empty{padding:34px;text-align:center;color:#b7a1af;border:1px dashed #72536c;border-radius:12px}
+.notice{font-size:12px;line-height:1.8;border-left:3px solid #a36a86;padding:11px 16px;background:#2b1f2d;margin-top:23px;color:#d7bdcd}
+footer{margin-top:33px;color:#9d8797;font-size:11px;line-height:1.9}
+@media(max-width:860px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cell{min-height:82px;padding:6px 4px}.dot{font-size:9px}.weekdays,.days{gap:3px}}
+@media(max-width:560px){.shell{padding:20px 13px 35px}.toolbar input{min-width:100%}.metrics{gap:8px}.metric{padding:13px}.metric strong{font-size:24px}.cell{min-height:62px;padding:5px 3px;border-radius:5px}.cell .day{font-size:10px;margin-bottom:5px}.dot{font-size:9px;max-height:29px;padding:2px}.weekdays span{font-size:10px}.event{display:block}.event-date{margin-bottom:10px}}
+</style></head><body><div class="shell">
+<header class="top"><div class="brand">IIR / CLINICAL CATALYST CALENDAR</div><nav class="crumbs"><a href="/">투자 레이더</a><a href="/?view=bio">바이오 후보</a><a href="https://portal.shnboy.workers.dev/">통합 포털</a></nav></header>
+<section class="hero"><div class="eyebrow">PHASE 2+ / U.S. LISTED BIOPHARMA</div><h1>임상 2상 이상 <span style="color:#e98cb1">이벤트 캘린더</span></h1><p>임상 데이터 발표, 회사가 제시한 예상 기간, ClinicalTrials.gov 주요 평가 완료일, 규제 이벤트를 구분합니다. <b class="important">임상 주요 평가 완료일은 결과 발표일이 아닙니다.</b> 1/2상은 혼합 단계로 분리 표시하며 공식 원문이 없는 날짜는 생성하지 않습니다.</p></section>
+<section class="metrics" aria-label="캘린더 통계"><div class="metric"><small>캘린더 이벤트</small><strong id="count-event">–</strong><span>필터 적용</span></div><div class="metric"><small>주요 데이터 발표</small><strong id="count-readout">–</strong><span>결과·중간 업데이트</span></div><div class="metric"><small>추적 기업</small><strong id="count-companies">–</strong><span>미국 법인·상장 확인</span></div><div class="metric"><small>공식 임상 등록 확인</small><strong id="count-registry">–</strong><span id="registry-sub">ClinicalTrials.gov 링크</span></div></section>
+<section class="toolbar" aria-label="캘린더 필터"><input type="search" id="query" maxlength="80" placeholder="티커 / 회사 / 치료제 / 질환 검색" aria-label="티커와 치료제 검색"><select id="phase" aria-label="임상 단계"><option value="all">2상 이상 + 혼합 1/2상</option><option value="strict">순수 2·3상만</option><option value="3">3상 중심</option><option value="mixed">혼합 1/2상만</option></select><select id="kind" aria-label="이벤트 유형"><option value="all">전체 이벤트</option><option value="readout">결과·중간 발표</option><option value="regulatory">FDA·허가·심사</option><option value="registry">임상 주요평가 완료</option></select><div class="view-toggle"><button type="button" class="active" data-view="month">월간</button><button type="button" data-view="list">목록</button></div><div class="filters-note">날짜 구분: 정확한 일자 / 예상 월·분기 / 확정 전 • 출처를 확인해 투자 판단에 활용하세요</div></section>
+<section id="calendar-view"><div class="calendar-heading"><h2 id="month-label">불러오는 중…</h2><div class="navigation"><button type="button" id="prev-month" aria-label="이전 달">‹</button><button type="button" id="current-month" class="today">이번 달</button><button type="button" id="next-month" aria-label="다음 달">›</button></div></div>
+<div class="panel"><div class="weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div><div class="days" id="days"></div></div><div id="range-events" class="month-events"></div></section>
+<div class="section-head"><h3 id="list-heading">다가오는 임상 이벤트</h3><small id="updated">공식 자료 대기</small></div><div id="events" class="event-list" aria-live="polite"><div class="empty">이벤트를 불러오는 중…</div></div>
+<div class="section-head"><h3>일정 미확정 임상</h3><small>2상 이상으로 분류됐지만 발표 시점을 확인하지 못한 프로그램</small></div><div id="undated" class="event-list"></div>
+<aside class="notice"><b>표기 원칙</b> — 회사 IR의 예상 발표기간과 미국 ClinicalTrials.gov의 Primary Completion Date는 서로 다릅니다. 월·분기 예상을 1일/말일의 확정 이벤트로 표시하지 않습니다. 임상 단계·종료일·규제 일자는 수시로 바뀔 수 있습니다. 미검증 투자 점수나 결과 성공률을 생성하지 않습니다.</aside>
+<footer><div>연구 출처: ClinicalTrials.gov, 회사 IR, SEC · 데이터 기준 및 마지막 갱신은 각 항목에서 확인 · 이 캘린더는 투자 추천이나 발표 일자 보증이 아닙니다.</div><div>버전 1.0 · 초기 범위는 <b>현재 IIR에 등록된 미국 바이오 후보</b>이며 미국 바이오 전체 시장 수집과 구분합니다.</div></footer>
+</div><script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const escapeHTML=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeURL=value=>{try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password?url.href:null}catch{return null}};
+const today=new Date(),active={year:today.getFullYear(),month:today.getMonth(),view:'month',items:[],undated:[],meta:{}};
+const pad=x=>String(x).padStart(2,'0');
+const first=(y,m)=>y+'-'+pad(m+1)+'-01';
+const last=(y,m)=>y+'-'+pad(m+1)+'-'+pad(new Date(Date.UTC(y,m+1,0)).getUTCDate());
+function phaseType(e){return e.phase_group||'UNKNOWN'}
+function visible(e){
+ const q=$('query').value.trim().toLowerCase(),p=$('phase').value,k=$('kind').value;
+ if(q&&![e.ticker,e.company_name,e.asset_name,e.indication,e.title,e.phase_label].join(' ').toLowerCase().includes(q))return false;
+ if(p==='strict'&&phaseType(e)==='MIXED_1_2')return false;
+ if(p==='3'&&phaseType(e)!=='PHASE3')return false;
+ if(p==='mixed'&&phaseType(e)!=='MIXED_1_2')return false;
+ if(k==='readout'&&!['TOPLINE','CLINICAL_UPDATE','INTERIM'].includes(e.event_type))return false;
+ if(k==='regulatory'&&e.event_type!=='REGULATORY')return false;
+ if(k==='registry'&&e.event_type!=='PRIMARY_COMPLETION')return false;
+ return true;
+}
+function kdate(d){return /^\d{4}-\d{2}-\d{2}$/.test(d||'')?d:'';
+}
+function dateLabel(e){
+ const start=kdate(e.start_date),end=kdate(e.end_date);
+ if(!start)return '발표일 미확정';
+ if(e.date_precision==='DAY_CONFIRMED')return start+' · 공식 일자';
+ if(e.date_precision==='MONTH_ESTIMATE')return start.slice(0,7)+' 예정 · 특정일 미확정';
+ if(e.date_precision==='YEAR_ESTIMATE')return start.slice(0,4)+'년 예정';
+ if(e.date_precision==='REGISTRY_MONTH')return start.slice(0,7)+' · 임상 주요평가 예정';
+ if(e.date_precision==='REGISTRY_DAY')return start+' · 임상 주요평가 날짜';
+ if(end)return start+' ~ '+end+' · 기간 예상';
+ return start.slice(0,7)+' 예정 · 특정일 미확정';
+}
+function eventClass(e){return e.event_type==='REGULATORY'?'fda':e.phase_group==='PHASE3'?'phase3':''}
+function eventCard(e){
+ const url=safeURL(e.source_url),nct=safeURL(e.nct_url);
+ const badge=phaseType(e)==='PHASE3'?'3상':phaseType(e)==='PHASE2'?'2상':phaseType(e)==='MIXED_1_2'?'혼합 1/2상':'임상단계 확인';
+ const type=({TOPLINE:'탑라인 결과',CLINICAL_UPDATE:'임상 데이터',INTERIM:'중간결과',REGULATORY:'FDA/규제',PRIMARY_COMPLETION:'주요 평가 완료'})[e.event_type]||'임상 이벤트';
+ return '<article class="event"><div class="event-date">'+escapeHTML(dateLabel(e))+'<span class="small">'+escapeHTML(type)+'</span></div><div><h4><span class="ticker">'+escapeHTML(e.ticker)+'</span>'+escapeHTML(e.title||e.asset_name)+'</h4>'+
+ '<div class="tag '+eventClass(e)+'">'+badge+'</div><div class="tag">'+escapeHTML(e.event_type==='PRIMARY_COMPLETION'?'임상등록정보':'회사 발표/계획')+'</div><p>'+escapeHTML(e.company_name)+' · '+escapeHTML(e.asset_name||'파이프라인 확인 중')+(e.indication?' · '+escapeHTML(e.indication):'')+'</p>'+
+ (e.risk_note?'<p class="muted">기존 연구 위험 메모: '+escapeHTML(e.risk_note)+'</p>':'')+
+ '<div class="links">'+(url?'<a href="'+escapeHTML(url)+'" target="_blank" rel="noopener noreferrer">일정 근거 원문</a>':'')+(nct?'<a href="'+escapeHTML(nct)+'" target="_blank" rel="noopener noreferrer">ClinicalTrials.gov ('+escapeHTML(e.nct_id)+')</a>':'')+
+ '<a href="/?view=bio" target="_blank" rel="noopener noreferrer">바이오 레이더</a></div>'+
+ '<p class="muted">자료 확인: '+escapeHTML(e.checked_at?e.checked_at.slice(0,10):'별도 재검증 필요')+'</p></div></article>';
+}
+function monthRange(e,s,eEnd){
+ if(!e.start_date)return false;
+ const end=e.end_date||e.start_date;
+ return e.start_date<=eEnd&&end>=s;
+}
+function render(){
+ const events=active.items.filter(visible),missing=active.undated.filter(visible);
+ $('count-event').textContent=events.length;
+ $('count-readout').textContent=events.filter(e=>['TOPLINE','CLINICAL_UPDATE','INTERIM'].includes(e.event_type)).length;
+ $('count-companies').textContent=new Set([...events,...missing].map(e=>e.ticker)).size;
+ $('count-registry').textContent=active.meta.linked_studies||0;
+ $('registry-sub').textContent='실제 갱신 '+(active.meta.checked_studies||0)+'건 / 매핑 '+(active.meta.linked_studies||0)+'건';
+ $('updated').textContent='조회 '+(active.meta.server_time_utc||'').slice(0,16).replace('T',' ')+' UTC · 현재 레이더 후보 한정';
+ $('calendar-view').hidden=active.view!=='month';
+ $('list-heading').textContent=active.view==='month'?'선택 월의 이벤트':'전체 이벤트 · 날짜순';
+ document.querySelectorAll('button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===active.view));
+ const start=first(active.year,active.month),end=last(active.year,active.month);
+ const shown=active.view==='month'?events.filter(e=>monthRange(e,start,end)):events;
+ $('events').innerHTML=shown.length?shown.map(eventCard).join(''):'<div class="empty">해당 조건의 일정이 없습니다. 다른 달 또는 필터를 선택하세요.</div>';
+ $('undated').innerHTML=missing.length?missing.map(eventCard).join(''):'<div class="empty">현재 필터에서 일정 미확정 항목이 없습니다.</div>';
+ $('month-label').textContent=active.year+'년 '+(active.month+1)+'월';
+ if(active.view!=='month')return;
+ const days=$('days'),date1=new Date(Date.UTC(active.year,active.month,1)).getUTCDay(),totalDays=new Date(Date.UTC(active.year,active.month+1,0)).getUTCDate();
+ let html='';
+ for(let i=0;i<Math.ceil((date1+totalDays)/7)*7;i++){
+  const d=i-date1+1,isCurrent=d>0&&d<=totalDays;
+  const date=isCurrent?active.year+'-'+pad(active.month+1)+'-'+pad(d):'';
+  const same=today.getFullYear()===active.year&&today.getMonth()===active.month&&today.getDate()===d;
+  const exact=shown.filter(e=>e.date_precision==='DAY_CONFIRMED'&&e.start_date===date);
+  html+='<div class="cell '+(!isCurrent?'dim':'')+'"><div class="day '+(same?'today':'')+'">'+(isCurrent?d:'')+'</div>'+
+  exact.slice(0,3).map(e=>'<a class="dot '+eventClass(e)+'" href="#events" title="'+escapeHTML(e.title)+'">'+escapeHTML(e.ticker+' · '+e.title.slice(0,18))+'</a>').join('')+
+  (exact.length>3?'<div class="muted" style="font-size:10px">+'+(exact.length-3)+'개</div>':'')+'</div>';
+ }
+ days.innerHTML=html;
+ const wide=shown.filter(e=>e.date_precision!=='DAY_CONFIRMED');
+ $('range-events').innerHTML=wide.length?wide.map(e=>'<div class="range"><b>'+escapeHTML(e.ticker)+'</b> · '+escapeHTML(dateLabel(e))+'<div class="muted">'+escapeHTML(e.title)+'</div></div>').join(''):'<span class="muted" style="font-size:12px">이번 달에 회사가 예상한 기간 이벤트가 없습니다.</span>';
+}
+function moveMonth(n){const d=new Date(Date.UTC(active.year,active.month+n,1));active.year=d.getUTCFullYear();active.month=d.getUTCMonth();render()}
+$('prev-month').onclick=()=>moveMonth(-1);
+$('next-month').onclick=()=>moveMonth(1);
+$('current-month').onclick=()=>{active.year=today.getFullYear();active.month=today.getMonth();render()};
+for(const id of ['query','phase','kind'])$(id).addEventListener(id==='query'?'input':'change',render);
+document.querySelectorAll('button[data-view]').forEach(b=>b.addEventListener('click',()=>{active.view=b.dataset.view;render()}));
+const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),9000);
+fetch('/api/clinical-calendar',{cache:'no-store',signal:controller.signal}).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{
+ if(!Array.isArray(d.events)||!Array.isArray(d.undated))throw Error('캘린더 API 응답 오류');
+ active.items=d.events;active.undated=d.undated;active.meta=d.meta||{};render();
+}).catch(e=>{$('events').innerHTML='<div class="empty">캘린더 데이터를 불러오지 못했습니다. 페이지를 새로고침하세요. ('+escapeHTML(e.message)+')</div>'; $('updated').textContent='데이터 연결 실패';}).finally(()=>clearTimeout(timeout));
+})();
+</script></body></html>
