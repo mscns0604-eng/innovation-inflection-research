@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName,cikFromVerifiedSecUrl,secIssuerIdentityMatches,form4IssuerMatches,parseRegisteredTrial} from '../dist/worker.mjs';
+import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName,cikFromVerifiedSecUrl,secIssuerIdentityMatches,form4IssuerMatches,parseRegisteredTrial,calendarPhaseGroup} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
  const r=scoreRange({});
@@ -365,4 +365,51 @@ test('ClinicalTrials polling uses bounded official API, checkpoint, and separate
  assert.match(code,/TRIAL_JOB,id\)\.run\(\)/);
  assert.match(html,/공식 등록상태/);
  assert.match(html,/임상 등록정보/);
+});
+
+test('calendar eligibility does not promote phase I-only or unverified pipelines',()=>{
+ assert.equal(calendarPhaseGroup('초기 임상(MAD)'),null);
+ assert.equal(calendarPhaseGroup('항암 초기 임상 1상(회사 발표 기준)'),null);
+ assert.equal(calendarPhaseGroup('Phase 1/2a (기업 발표)'),'MIXED_1_2');
+ assert.equal(calendarPhaseGroup('임상 1/2상'),'MIXED_1_2');
+ assert.equal(calendarPhaseGroup('임상 2상 (QUELL-CV / QUELL-DME)'),'PHASE2');
+ assert.equal(calendarPhaseGroup('CoMpass 임상 3상'),'PHASE3');
+ assert.equal(calendarPhaseGroup('남성 임상 3상 / 여성 임상 2·3상'),'PHASE3');
+ assert.equal(calendarPhaseGroup(null),null);
+});
+test('calendar shows distinct company date ranges and registered primary completion, not false exact readout',async()=>{
+ const rows={assets:[
+  {asset_id:1,ticker:'BIOA',company_name:'BioAge Labs',asset_name:'BGE-102',phase_label:'임상 2상',phase_verified:1,source_url:'https://example.com/ir',checked_at_utc:'2026-11-13',indication:'염증',risk_note:'현금소진'},
+  {asset_id:2,ticker:'FATE',company_name:'Fate',asset_name:'FT836',phase_label:'임상 1상',phase_verified:1,source_url:'https://example.com/ir'}
+ ],milestones:[
+  {event_id:5,asset_id:1,ticker:'BIOA',company_name:'BioAge Labs',asset_name:'BGE-102',phase_label:'임상 2상',description:'QUELL-CV 결과 Q4 2026',event_kind:'COMPANY_GUIDANCE',target_start:'2026-10-01',target_end:'2026-12-31',date_confidence:'COMPANY_GUIDANCE',source_url:'https://example.com/ir',indication:'염증',risk_note:'현금소진'},
+  {event_id:6,asset_id:2,ticker:'FATE',company_name:'Fate',asset_name:'FT836',phase_label:'임상 1상',description:'예상 데이터',target_start:'2026-12-01',date_confidence:'MONTH_ESTIMATE'}
+ ],trials:[
+  {asset_id:1,ticker:'BIOA',company_name:'BioAge Labs',asset_name:'BGE-102',phase_label:'임상 2상',nct_id:'NCT12345678',public_title:'BGE-102 study',phase:'PHASE2',status:'RECRUITING',primary_completion_date:'2027-04',last_checked_at_utc:'2026-11-19T00:00:00Z',source_url:'https://clinicaltrials.gov/study/NCT12345678',indication:'염증'}
+ ]};
+ const env={DB:{prepare(sql){const name=sql.includes('FROM bio_milestones m JOIN')?'milestones':sql.includes('FROM bio_asset_trials bat JOIN')?'trials':'assets';return {all:async()=>({results:rows[name]})};}}};
+ const res=await worker.fetch(new Request('https://iir.example/api/clinical-calendar'),env);
+ assert.equal(res.status,200);
+ const body=await res.json();
+ assert.equal(body.events.length,2);
+ assert.equal(body.undated.length,0);
+ assert.equal(body.events[0].date_precision,'WINDOW_ESTIMATE');
+ assert.equal(body.events[0].end_date,'2026-12-31');
+ assert.equal(body.events[0].event_type,'CLINICAL_UPDATE');
+ assert.equal(body.events[1].event_type,'PRIMARY_COMPLETION');
+ assert.equal(body.events[1].date_precision,'REGISTRY_MONTH');
+ assert.equal(body.events[1].end_date,'2027-04-30');
+ assert.equal(body.meta.scope,'TRACKED_US_BIOPHARMA_ONLY');
+ assert.equal(body.meta.checked_studies,1);
+ assert.ok(body.events.every(x=>x.ticker!=='FATE'));
+});
+test('clinical calendar web route responds with filter controls and no fabricated market-wide coverage',async()=>{
+ const res=await worker.fetch(new Request('https://iir.example/calendar'));
+ assert.equal(res.status,200);
+ const content=await res.text();
+ assert.match(content,/임상 2상 이상/);
+ assert.match(content,/\/api\/clinical-calendar/);
+ assert.match(content,/1\/2상/);
+ assert.match(content,/현재 IIR에 등록된 미국 바이오 후보/);
+ assert.match(content,/임상 주요 평가 완료일은 결과 발표일이 아닙니다/);
 });
