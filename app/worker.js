@@ -4,6 +4,7 @@
  * Public read-only API; admin mutations disabled until a server-side token is set.
  */
 const PAGE = __IIR_HTML__;
+const CALENDAR_PAGE = __IIR_CALENDAR_HTML__;
 const RUBRIC_VERSION = 'v0.2.0';
 const WEIGHTS = Object.freeze({insider:25,theme:20,technology:20,external_validation:10,financial:10,price:10,macro:5});
 const JOB = 'sec_form4';
@@ -120,6 +121,91 @@ async function listCandidates(db,url){
  const rows=await db.prepare('SELECT '+fields+common+' ORDER BY '+ALLOW_SORT[sort]+' LIMIT ? OFFSET ?').bind(...args,rawLimit,(rawPage-1)*rawLimit).all();
  return json({items:(rows.results||[]).map(displayRow),total:count?.n||0,page:rawPage,limit:rawLimit,quarter});
 }
+
+/**
+ * Calendar is restricted to Phase II+ or clearly-labelled mixed Phase I/II.
+ * Do not infer a later phase from a product name, general company statement,
+ * or a Phase I-only presentation (e.g. a promising oncology expansion cohort).
+ */
+export function calendarPhaseGroup(phase){
+ if(typeof phase!=='string')return null;
+ const p=phase.toUpperCase();
+ if(/PHASE\s*1\s*[/,]\s*(?:PHASE\s*)?2|임상\s*1\s*[/·-]\s*2\s*상/.test(p))return 'MIXED_1_2';
+ if(/PHASE\s*3|PHASE\s*4|임상\s*[34]\s*상|(?:^|[^0-9])[34]\s*상/.test(p))return 'PHASE3';
+ if(/PHASE\s*2|임상\s*2\s*상|(?:^|[^0-9])2\s*상/.test(p))return 'PHASE2';
+ return null;
+}
+function safeCalendarDate(s){
+ return typeof s==='string'&&/^20\d{2}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s+'T00:00:00Z'))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s?s:null;
+}
+function monthEnd(start){
+ const x=safeCalendarDate(start);
+ if(!x)return null;
+ const d=new Date(Date.UTC(Number(x.slice(0,4)),Number(x.slice(5,7)),0));
+ return d.toISOString().slice(0,10);
+}
+function milestoneKind(m){
+ const code=String(m.event_kind||'').toUpperCase(),title=String(m.description||'');
+ if(code==='CLINICAL_INTERIM')return 'INTERIM';
+ if(code==='CLINICAL_UPDATE')return 'CLINICAL_UPDATE';
+ if(/탑라인|TOPLINE/i.test(title))return 'TOPLINE';
+ if(/BLA|NDA|FDA|허가신청|승인심사/i.test(title))return 'REGULATORY';
+ if(/중간|INTERIM/i.test(title))return 'INTERIM';
+ return 'CLINICAL_UPDATE';
+}
+async function clinicalCalendar(db){
+ // Query only the tracked US-incorporated US-headquartered NYSE/Nasdaq common shares.
+ // Never show seeded non-US companies or unsupported clinical phase I-only entries.
+ const base=" FROM bio_assets a JOIN companies c ON c.ticker=a.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker WHERE c.bio_mode='QUALIFIED_BIO' AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' AND lv.primary_exchange IN ('NYSE','NASDAQ')";
+ const [assets,milestones,trials]=await Promise.all([
+  db.prepare("SELECT a.id AS asset_id,a.company_ticker AS ticker,c.name AS company_name,a.asset_name,a.phase_label,a.phase_verified,a.checked_at_utc,a.source_url,c.industry AS indication,c.risk_note"+base+" AND a.phase_verified=1 ORDER BY a.company_ticker,a.id LIMIT 200").all(),
+  db.prepare("SELECT m.id AS event_id,a.id AS asset_id,a.company_ticker AS ticker,c.name AS company_name,a.asset_name,a.phase_label,a.checked_at_utc,m.event_kind,m.description,m.target_start,m.target_end,m.date_confidence,m.source_url,m.verified_at_utc,c.industry AS indication,c.risk_note FROM bio_milestones m JOIN bio_assets a ON a.id=m.asset_id JOIN companies c ON c.ticker=a.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE a.phase_verified=1 AND c.bio_mode='QUALIFIED_BIO' AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.incorporation_country='US' AND lv.headquarters_country='US' AND lv.primary_exchange IN ('NYSE','NASDAQ') ORDER BY m.target_start,m.id LIMIT 200").all(),
+  db.prepare("SELECT a.id AS asset_id,a.company_ticker AS ticker,c.name AS company_name,a.asset_name,a.phase_label,t.nct_id,t.public_title,t.phase,t.status,t.primary_completion_date,t.last_checked_at_utc,t.source_url,c.industry AS indication,c.risk_note FROM bio_asset_trials bat JOIN bio_trials t ON t.nct_id=bat.nct_id JOIN bio_assets a ON a.id=bat.asset_id JOIN companies c ON c.ticker=a.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE c.bio_mode='QUALIFIED_BIO' AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.incorporation_country='US' AND lv.headquarters_country='US' AND lv.primary_exchange IN ('NYSE','NASDAQ') ORDER BY a.company_ticker,t.nct_id LIMIT 200").all()
+ ]);
+ const assetsOk=(assets.results||[]).filter(a=>calendarPhaseGroup(a.phase_label));
+ const eligible=new Map(assetsOk.map(a=>[a.asset_id,a]));
+ const trialByAsset=new Map();
+ const matchedTrials=[];
+ for(const t of trials.results||[]){
+  const group=calendarPhaseGroup(t.phase)||calendarPhaseGroup(t.phase_label);
+  if(!group||!eligible.has(t.asset_id))continue;
+  matchedTrials.push(t);
+  if(!trialByAsset.has(t.asset_id))trialByAsset.set(t.asset_id,t);
+ }
+ const events=[],scheduled=new Set();
+ for(const m of milestones.results||[]){
+  const asset=eligible.get(m.asset_id),start=safeCalendarDate(m.target_start),end=safeCalendarDate(m.target_end);
+  if(!asset||!start)continue;
+  const mixed=calendarPhaseGroup(asset.phase_label);
+  const precision=m.date_confidence==='MONTH_ESTIMATE'?'MONTH_ESTIMATE':end&&end>start?'WINDOW_ESTIMATE':'MONTH_ESTIMATE';
+  const trial=trialByAsset.get(m.asset_id);
+  events.push({id:'m'+m.event_id,ticker:m.ticker,company_name:m.company_name,asset_name:m.asset_name,phase_label:m.phase_label,phase_group:mixed,indication:m.indication,title:m.description,event_type:milestoneKind(m),date_precision:precision,start_date:start,end_date:precision==='MONTH_ESTIMATE'?monthEnd(start):end||monthEnd(start),source_url:m.source_url||asset.source_url,checked_at:m.verified_at_utc||asset.checked_at_utc,nct_id:trial?.nct_id||null,nct_url:trial?.source_url||null,risk_note:m.risk_note});
+  scheduled.add(m.asset_id);
+ }
+ for(const t of matchedTrials){
+  // The registry PCD is the end of data collection, NOT a topline readout.
+  // Only publish date if official API polling succeeded.
+  if(!t.last_checked_at_utc)continue;
+  const raw=typeof t.primary_completion_date==='string'?t.primary_completion_date:'';
+  if(!/^20\d{2}-\d{2}(?:-\d{2})?$/.test(raw))continue;
+  const start=safeCalendarDate(raw.length===7?raw+'-01':raw);
+  if(!start)continue;
+  const group=calendarPhaseGroup(t.phase)||calendarPhaseGroup(t.phase_label);
+  events.push({id:'n'+t.nct_id+'-'+t.asset_id,ticker:t.ticker,company_name:t.company_name,asset_name:t.asset_name,phase_label:t.phase_label,phase_group:group,indication:t.indication,title:(t.public_title||t.asset_name)+' — 임상 주요 평가 완료일',event_type:'PRIMARY_COMPLETION',date_precision:raw.length===7?'REGISTRY_MONTH':'REGISTRY_DAY',start_date:start,end_date:raw.length===7?monthEnd(start):start,source_url:t.source_url,checked_at:t.last_checked_at_utc,nct_id:t.nct_id,nct_url:t.source_url,risk_note:t.risk_note});
+  scheduled.add(t.asset_id);
+ }
+ const undated=[];
+ for(const a of assetsOk){
+  if(scheduled.has(a.asset_id))continue;
+  const trial=trialByAsset.get(a.asset_id);
+  undated.push({id:'u'+a.asset_id,ticker:a.ticker,company_name:a.company_name,asset_name:a.asset_name,phase_label:a.phase_label,phase_group:calendarPhaseGroup(a.phase_label),indication:a.indication,title:a.asset_name+' — 다음 확인 일정 미확정',event_type:'UNSCHEDULED',date_precision:'UNKNOWN',start_date:null,end_date:null,source_url:a.source_url,checked_at:a.checked_at_utc,nct_id:trial?.nct_id||null,nct_url:trial?.source_url||null,risk_note:a.risk_note});
+ }
+ events.sort((a,b)=>a.start_date.localeCompare(b.start_date)||a.ticker.localeCompare(b.ticker)||a.id.localeCompare(b.id));
+ undated.sort((a,b)=>a.ticker.localeCompare(b.ticker));
+ const checked=new Set(matchedTrials.filter(x=>x.last_checked_at_utc).map(x=>x.nct_id));
+ return json({events,undated,meta:{server_time_utc:iso(),scope:'TRACKED_US_BIOPHARMA_ONLY',phase_rule:'PHASE2_PLUS_OR_LABELED_MIXED_1_2',linked_studies:new Set(matchedTrials.map(t=>t.nct_id)).size,checked_studies:checked.size,tracked_assets:assetsOk.length,dated_events:events.length,undated_assets:undated.length,results_not_inferred:true}});
+}
+
 async function candidateDetail(db,ticker){
  if(!validTicker(ticker))return json({error:'INVALID_TICKER'},400);
  const c=await db.prepare("SELECT c.*,lv.primary_exchange AS primary_exchange,lv.verification_source_url AS listing_source_url,lv.verified_on AS listing_verified_on FROM companies c INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' AND lv.incorporation_country='US' AND lv.headquarters_country='US' AND lv.primary_exchange IN ('NYSE','NASDAQ') WHERE c.ticker=? AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL')").bind(ticker).first();
@@ -529,6 +615,7 @@ export default {
    }
    if(request.method!=='GET')return json({error:'METHOD_NOT_ALLOWED'},405);
    if(url.pathname==='/api/status')return getStatus(env.DB,env);
+   if(url.pathname==='/api/clinical-calendar')return clinicalCalendar(env.DB);
    if(url.pathname==='/api/candidates')return listCandidates(env.DB,url);
    if(url.pathname==='/api/signals')return listSignals(env.DB,url);
    if(url.pathname==='/api/quarter')return getQuarterState(env.DB,url);
@@ -545,6 +632,7 @@ export default {
     return candidateDetail(env.DB,ticker);
    }
    if(url.pathname.startsWith('/api/'))return json({error:'NOT_FOUND'},404);
+   if(url.pathname==='/calendar'||url.pathname==='/calendar/')return new Response(CALENDAR_PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'strict-origin-when-cross-origin','content-security-policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"}});
    if(url.pathname!=='/'&&url.pathname!=='/index.html')return json({error:'NOT_FOUND'},404);
    return new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'strict-origin-when-cross-origin','content-security-policy':"default-src 'none'; script-src 'unsafe-inline' https://s3.tradingview.com; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: https://s3.tradingview.com; frame-src https://*.tradingview.com https://tradingview.com; base-uri 'none'; frame-ancestors 'none'"}});
   }catch(e){console.error(JSON.stringify({event:'api_error',path:url.pathname,error:String(e).slice(0,180)}));return json({error:'INTERNAL_ERROR',message:'데이터 요청 처리 실패'},500)}
