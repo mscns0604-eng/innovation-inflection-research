@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.3.6 — 2026-11-19 — 미국 혁신주 25개 편입·SEC 검사범위 추적·차트 복구
+
+- `app/migrations/0009_q4_five_additional.sql`: 2026Q4 연구문서의 신규 ABSI·CGEM(바이오), SLDP·BFLY·ENVX(기술) 5개 기업, 미국 법인/본사 검증, 연구 이력, 공식 근거, 이벤트를 추가. 이전 DB/기술주10+바이오10 보존. 바이오 NCT07317544/NCT05143996 등록번호 연계.
+- `app/migrations/0010_sec_scan_coverage.sql`: 종목별 최신 SEC 검사 성공/실패, 확인한 Form 4 수, 미검증 P 거래행 데이터 저장. 최근 검사와 역사적 내부자 부재를 구분.
+- 거래소별 TradingView 차트를 고정 종목 목록에서 실측 `primary_exchange` 기반으로 전환. 향후 새 종목에서도 차트가 자동으로 연결되도록 함.
+- SEC 원문 코드 P의 신규 신고금액과 초기 수동 스크리닝 집계금액을 구분. 최신 종가와 과거 기준 가격 구분 유지. 바이오 정밀화면에 확인된 ClinicalTrials.gov 등록번호 링크 노출.
+- GitHub Actions Node 테스트 시행 후 기존 D1·SEC 연락처 비밀 변수 상속 및 운영 배포. 기존 Cron/포털 리소스 유지.
+- **남은 미구현/미검증:** 임상시험 자동갱신, 자동 기업발굴, FDA 사건 자동 추적, 실증된 AI 점수/백테스트, 관리자 수동 실행의 보안토큰, 정식 시세 라이선스. 새 코드의 다음 Cron 실운영 결과는 별도 확인.
+
+
 ## 앱 운영 패치 v0.3.5 — 2026-11-17 — SEC 실환경 연결 진단·수집 중복 방지
 
 - 일시적 독립 Cloudflare Worker에서 SEC 기업 공시 목록, Form 4 원문, 티커 JSON **모두 HTTP 200** 확인(각 174ms/200ms/23ms). Cloudflare 전체가 SEC에 차단된 것은 아님. 진단 Worker는 검사 후 삭제.
