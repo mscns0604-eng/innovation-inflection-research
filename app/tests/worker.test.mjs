@@ -320,8 +320,8 @@ test('2026Q4 extra candidates are added without placeholder prices, fake SEC tra
  for(const ticker of ['ABSI','CGEM','SLDP','BFLY','ENVX']){
   assert.match(sql,new RegExp("VALUES\\('"+ticker+"'"));
  }
- assert.equal((sql.match(/INSERT OR IGNORE INTO companies\\(/g)||[]).length,5);
- assert.equal((sql.match(/INSERT OR IGNORE INTO research_quarter_entries\\(/g)||[]).length,5);
+ assert.equal(sql.split('INSERT OR IGNORE INTO companies(').length-1,5);
+ assert.equal(sql.split('INSERT OR IGNORE INTO research_quarter_entries(').length-1,5);
  assert.equal((sql.match(/'NEW','RESEARCHING'/g)||[]).length,5);
  assert.match(sql,/NCT07317544/);
  assert.match(sql,/NCT05143996/);
