@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName,cikFromVerifiedSecUrl,secIssuerIdentityMatches,form4IssuerMatches} from '../dist/worker.mjs';
+import worker, {scoreRange,parseForm4,parseLatestYahooClose,quarterFor,previousQuarter,secSourceUrl,rawForm4DocumentName,cikFromVerifiedSecUrl,secIssuerIdentityMatches,form4IssuerMatches,parseRegisteredTrial} from '../dist/worker.mjs';
 
 test('missing components remain unknown, not zero', () => {
  const r=scoreRange({});
@@ -339,4 +339,30 @@ test('per-company SEC scan state preserves last success and does not imply total
  assert.match(src,/last_success_at_utc=excluded\.last_success_at_utc/);
  assert.match(src,/last_result='FAILED'/);
  assert.match(src,/bio_trials:bioTrials\.results\|\|\[\]/);
+});
+
+test('official ClinicalTrials study status parser validates NCT ID and preserves uncertainty',()=>{
+ const study={protocolSection:{
+  identificationModule:{nctId:'NCT07317544',briefTitle:'  ABS-201 Phase 1/2a  '},
+  statusModule:{overallStatus:'RECRUITING',primaryCompletionDateStruct:{date:'2028-07'}},
+  designModule:{phases:['PHASE1','PHASE2']}
+ }};
+ assert.deepEqual(parseRegisteredTrial(study,'NCT07317544'),{title:'ABS-201 Phase 1/2a',status:'RECRUITING',phase:'PHASE1,PHASE2',primaryCompletion:'2028-07'});
+ assert.throws(()=>parseRegisteredTrial(study,'NCT05143996'),/NCT_ID_MISMATCH/);
+ assert.throws(()=>parseRegisteredTrial({},'NCT07317544'),/NCT_ID_MISMATCH/);
+ assert.throws(()=>parseRegisteredTrial(study,'bad-id'),/INVALID_NCT_ID/);
+ assert.throws(()=>parseRegisteredTrial({...study,protocolSection:{...study.protocolSection,statusModule:{overallStatus:'<script>'}}},'NCT07317544'),/NCT_INVALID_STATUS/);
+});
+test('ClinicalTrials polling uses bounded official API, checkpoint, and separate pipeline state',()=>{
+ const schema=readFileSync(new URL('../migrations/0011_clinical_trial_refresh.sql',import.meta.url),'utf8');
+ const code=readFileSync(new URL('../worker.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../web.html',import.meta.url),'utf8');
+ assert.match(schema,/INSERT OR IGNORE INTO pipeline_state/);
+ assert.match(code,/const TRIAL_BATCH = 3/);
+ assert.match(code,/const TRIAL_REQUEST_MS = 6500/);
+ assert.match(code,/clinicaltrials\.gov\/api\/v2\/studies/);
+ assert.match(code,/runTrialRefresh\(env,'CRON'\)/);
+ assert.match(code,/TRIAL_JOB,id\)\.run\(\)/);
+ assert.match(html,/공식 등록상태/);
+ assert.match(html,/임상 등록정보/);
 });
