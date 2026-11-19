@@ -413,3 +413,14 @@ test('clinical calendar web route responds with filter controls and no fabricate
  assert.match(content,/현재 IIR에 등록된 미국 바이오 후보/);
  assert.match(content,/임상 주요 평가 완료일은 결과 발표일이 아닙니다/);
 });
+
+test('calendar inline JavaScript is syntactically valid and bounded request is present',()=>{
+ const html=readFileSync(new URL('../calendar.html',import.meta.url),'utf8');
+ const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+ assert.equal(scripts.length,1);
+ assert.doesNotThrow(()=>new Function(scripts[0][1]));
+ assert.match(html,/AbortController/);
+ assert.match(html,/clearTimeout\(timeout\)/);
+ assert.match(html,/Primary Completion Date/);
+ assert.match(html,/DATE_CONFIRMED|DAY_CONFIRMED/);
+});
