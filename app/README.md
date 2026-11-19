@@ -78,6 +78,17 @@ UTC `30 23 * * MON-FRI`(KST 화~토 08:30), UTC `30 11 * * MON-FRI`(KST 월~금 
 - 국내 증권사별 매매 가능 여부는 실시간 검증하지 않으므로 포털/레이더 모두 거래가능 확답을 제공하지 않음.
 - 연구 기록: `research/2026-11-13_us_only_reselection.md`.
 
+## 임상 2상 이상 캘린더 (2026-11-19)
+
+- 경로: `https://iir-innovation-radar.shnboy.workers.dev/calendar` · API `GET /api/clinical-calendar` (공개·읽기 전용).
+- 독립된 달력 HTML `app/calendar.html`을 기존 `iir-innovation-radar` Worker에 빌드 시 주입. 기존 D1·SEC 연락처 비밀·Cron 설정 유지.
+- 현재 **기존 IIR 미국 바이오 후보 12개만 범위**. 기업 IR 기반 발표 기간은 `bio_milestones`, NCT 주요 평가 완료일은 `bio_trials`와 `bio_asset_trials`에서 조회. 임상 1상 단독 파이프라인은 제외하고 혼합 1/2상은 명시적으로 표시·필터 제공.
+- 날짜 구분: 회사 예상 월/분기(기간 전체로 처리)와 ClinicalTrials.gov Primary Completion Date(결과 발표일이 아님)를 별도 이벤트로 표시. 확인되지 않은 특정 날짜·임상 성공·평가 점수는 생성하지 않는다.
+- 버전 1.0 최초 운영 DB에서 8개 발표/규제 일정, 1개 일정 미확정 3상 프로그램(ANVS), NCT 링크 2개 확인. 2개 NCT의 공식 API 자동갱신은 이후 정기 실행에서 기록되며 초기 상태는 미확인이다.
+- 날짜 필터: 월간/전체 목록, 티커·치료제 검색, 2상/3상/혼합 1/2상, 이벤트 유형. 모든 기록에 원문 링크와 자료 확인 시각 노출.
+- **아직 미완성:** 미국 상장 바이오 전체 Phase II+ 자동 발견, NCT 전수 연결, 회사 IR 발표 시점 자동 변경탐지, FDA PDUFA 일정 공식 자동수집, 결과 요약(ORR·PFS·OS·유해사례), iCalendar 동기화.
+- 검증: `app/tests/worker.test.mjs`의 단계 분류, 회사 기간과 NCT 날짜 분리, HTML 구문 검사. 포털 연결은 `portal/links.json`·`portal/tests/portal.test.mjs` 및 CI로 함께 검증.
+
 ## 2026-11-19 후보 25개 및 SEC 수집 상태 가시화 (v0.3.6)
 
 - 미국 법인·본사·NYSE/Nasdaq 기준을 재확인한 기술 3개(SLDP/BFLY/ENVX), 바이오 2개(ABSI/CGEM)를 분기 `NEW, RESEARCHING`으로 등록. 기존 10+10을 교체하거나 과거 투자기록을 삭제하지 않음.
