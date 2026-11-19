@@ -8,6 +8,10 @@ const RUBRIC_VERSION = 'v0.2.0';
 const WEIGHTS = Object.freeze({insider:25,theme:20,technology:20,external_validation:10,financial:10,price:10,macro:5});
 const JOB = 'sec_form4';
 const MARKET_JOB = 'market_close';
+const TRIAL_JOB = 'clinical_trials';
+const TRIAL_BATCH = 3;
+const TRIAL_RUN_MS = 24000;
+const TRIAL_REQUEST_MS = 6500;
 const MARKET_SOURCE = 'YAHOO_CHART_V8';
 const MARKET_BATCH = 10;
 // Deliberately bounded: a larger tracked universe is processed across successive Cron runs.
@@ -137,12 +141,14 @@ async function candidateDetail(db,ticker){
  return json({company:c,filings:filings.results,scores:(scores.results||[]).map(s=>({...s,...scoreRange(s)})),catalysts:events.results,signals:signals.results,insider_trades:trades.results||[],market_prices:prices.results||[],bio_assets:assets.results||[],bio_topics:topics.results||[],bio_milestones:bioEvents.results||[],bio_trials:bioTrials.results||[],research_quarters:quarterHistory.results||[],evidence:proofs.results||[],rubric_version:RUBRIC_VERSION});
 }
 async function getStatus(db,env){
- const [s,m,summary,activeSummary,scanSummary]=await Promise.all([
+ const [s,m,summary,activeSummary,scanSummary,trialState,trialCoverage]=await Promise.all([
   db.prepare('SELECT job_name,last_attempt_at_utc,last_success_at_utc,last_error,cursor,enabled,last_run_state,error_count FROM pipeline_state WHERE job_name=?').bind(JOB).first(),
   db.prepare('SELECT last_attempt_at_utc,last_success_at_utc,last_error,last_run_state,enabled FROM pipeline_state WHERE job_name=?').bind(MARKET_JOB).first(),
   db.prepare("SELECT COUNT(DISTINCT m.company_ticker) AS covered,MAX(m.price_date) AS latest_price_date FROM market_snapshots m INNER JOIN companies c ON c.ticker=m.company_ticker INNER JOIN company_listing_verification lv ON lv.company_ticker=c.ticker AND lv.eligibility_status='US_CONFIRMED' WHERE m.close_usd>0 AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL')").first(),
   db.prepare("SELECT COUNT(*) AS active FROM companies c JOIN company_listing_verification lv ON lv.company_ticker=c.ticker WHERE c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.eligibility_status='US_CONFIRMED'").first(),
-  db.prepare("SELECT COUNT(*) AS scanned FROM company_sec_scan_state sc JOIN companies c ON c.ticker=sc.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker WHERE sc.last_success_at_utc IS NOT NULL AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.eligibility_status='US_CONFIRMED'").first()
+  db.prepare("SELECT COUNT(*) AS scanned FROM company_sec_scan_state sc JOIN companies c ON c.ticker=sc.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker WHERE sc.last_success_at_utc IS NOT NULL AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.eligibility_status='US_CONFIRMED'").first(),
+  db.prepare('SELECT enabled,last_run_state,last_attempt_at_utc,last_success_at_utc,last_error,cursor FROM pipeline_state WHERE job_name=?').bind(TRIAL_JOB).first(),
+  db.prepare("SELECT COUNT(*) AS total, COUNT(CASE WHEN t.last_checked_at_utc IS NOT NULL THEN 1 END) AS checked FROM bio_trials t WHERE EXISTS (SELECT 1 FROM bio_asset_trials bat JOIN bio_assets a ON a.id=bat.asset_id JOIN companies c ON c.ticker=a.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker WHERE bat.nct_id=t.nct_id AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.eligibility_status='US_CONFIRMED')").first()
  ]);
  let state='NOT_CONFIGURED';
  if(!s?.enabled||env.AUTOMATION_ENABLED==='false')state='DISABLED';
@@ -151,7 +157,7 @@ async function getStatus(db,env){
  return json({version:'iir-mvp-0.1',rubric_version:RUBRIC_VERSION,seed_asof:'2026-11-09',historical_seed:true,
   sec:{state,last_attempt_at:s?.last_attempt_at_utc||null,last_success_at:s?.last_success_at_utc||null,
   last_error:s?.last_error||null,checkpoint:s?.cursor||0,scanned_companies:scanSummary?.scanned||0,eligible_companies:activeSummary?.active||0,scan_per_company_max_documents:2,auto_enabled:!!s?.enabled&&env.AUTOMATION_ENABLED!=='false'},
-  market:{state:!m?.enabled||env.AUTOMATION_ENABLED==='false'?'DISABLED':(m?.last_run_state||'NEVER_RUN'),last_attempt_at:m?.last_attempt_at_utc||null,last_success_at:m?.last_success_at_utc||null,last_error:m?.last_error||null,covered:summary?.covered||0,eligible_companies:activeSummary?.active||0,latest_price_date:summary?.latest_price_date||null},technology:{state:'MANUAL_REVIEW'},server_time_utc:iso()});
+  market:{state:!m?.enabled||env.AUTOMATION_ENABLED==='false'?'DISABLED':(m?.last_run_state||'NEVER_RUN'),last_attempt_at:m?.last_attempt_at_utc||null,last_success_at:m?.last_success_at_utc||null,last_error:m?.last_error||null,covered:summary?.covered||0,eligible_companies:activeSummary?.active||0,latest_price_date:summary?.latest_price_date||null},bio_trials:{state:!trialState?.enabled||env.AUTOMATION_ENABLED==='false'?'DISABLED':(trialState?.last_run_state||'NEVER_RUN'),last_success_at:trialState?.last_success_at_utc||null,last_error:trialState?.last_error||null,linked:trialCoverage?.total||0,checked:trialCoverage?.checked||0},technology:{state:'MANUAL_REVIEW'},server_time_utc:iso()});
 }
 async function listSignals(db,url){
  const since=url.searchParams.get('since')||'2026-01-01';
@@ -357,6 +363,79 @@ async function runRefresh(env,source){
  return {state,checked,changed,requests:ctx.requests,error:err};
 }
 
+
+// Official ClinicalTrials.gov study metadata sync, limited to already-mapped NCT identifiers.
+// This job never treats study completion or recruitment as positive efficacy results.
+export function parseRegisteredTrial(study,nct){
+ if(!/^NCT\d{8}$/.test(nct))throw Error('INVALID_NCT_ID');
+ const p=study?.protocolSection;
+ const returned=p?.identificationModule?.nctId;
+ if(returned!==nct)throw Error('NCT_ID_MISMATCH');
+ const status=p?.statusModule?.overallStatus;
+ if(typeof status!=='string'||!/^[A-Z_]{3,40}$/.test(status))throw Error('NCT_INVALID_STATUS');
+ const phases=p?.designModule?.phases;
+ if(phases!=null&&(!Array.isArray(phases)||phases.length>4||phases.some(v=>typeof v!=='string'||!/^PHASE[0-4]$|^EARLY_PHASE1$|^NA$/.test(v))))throw Error('NCT_INVALID_PHASE');
+ const title=p?.identificationModule?.briefTitle;
+ const safeTitle=typeof title==='string'&&title.trim()?title.trim().slice(0,500):null;
+ const completion=p?.statusModule?.primaryCompletionDateStruct?.date;
+ if(completion!=null&&(typeof completion!=='string'||!/^\d{4}-\d{2}(-\d{2})?$/.test(completion)))throw Error('NCT_INVALID_DATE');
+ return {title:safeTitle,status,phase:phases?.join(',')||null,primaryCompletion:completion||null};
+}
+async function fetchOfficialTrial(nct,deadline){
+ if(!/^NCT\d{8}$/.test(nct)||Date.now()>deadline)throw Error('NCT_BUDGET_EXCEEDED');
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),TRIAL_REQUEST_MS);
+ try{
+  const response=await fetch('https://clinicaltrials.gov/api/v2/studies/'+nct,{headers:{Accept:'application/json'},signal:controller.signal,redirect:'manual'});
+  if(!response.ok)throw Error('NCT_HTTP_'+response.status);
+  const n=Number(response.headers.get('content-length')||0);
+  if(n>300000)throw Error('NCT_BODY_TOO_LARGE');
+  const body=await response.text();
+  if(body.length>300000)throw Error('NCT_BODY_TOO_LARGE');
+  return parseRegisteredTrial(JSON.parse(body),nct);
+ }finally{clearTimeout(timer)}
+}
+async function runTrialRefresh(env,source){
+ const db=env.DB;
+ if(env.AUTOMATION_ENABLED==='false')return {state:'DISABLED'};
+ const id=crypto.randomUUID(),now=iso(),lease=new Date(Date.now()+120000).toISOString();
+ const lock=await db.prepare("UPDATE pipeline_state SET lock_owner=?,lease_expires_at_utc=?,last_attempt_at_utc=?,last_run_state='RUNNING' WHERE job_name=? AND enabled=1 AND (lease_expires_at_utc IS NULL OR lease_expires_at_utc<?)").bind(id,lease,now,TRIAL_JOB,now).run();
+ if(!lock.meta?.changes)return {state:'ALREADY_RUNNING_OR_STOPPED'};
+ const deadline=Date.now()+TRIAL_RUN_MS;
+ let state='SUCCESS',checked=0,changed=0,failed=0,cursor=0,error='';
+ try{
+  await db.prepare("INSERT INTO pipeline_runs(id,job_name,started_at_utc,state,version) VALUES(?,?,?,'RUNNING','1')").bind(id,TRIAL_JOB,now).run();
+  const list=await db.prepare("SELECT t.nct_id FROM bio_trials t WHERE EXISTS (SELECT 1 FROM bio_asset_trials bat JOIN bio_assets a ON a.id=bat.asset_id JOIN companies c ON c.ticker=a.company_ticker JOIN company_listing_verification lv ON lv.company_ticker=c.ticker WHERE bat.nct_id=t.nct_id AND c.eligible_status IN ('ELIGIBLE','CONDITIONAL') AND lv.eligibility_status='US_CONFIRMED') ORDER BY t.nct_id LIMIT 100").all();
+  const studies=list.results||[],total=studies.length;
+  const prev=await db.prepare('SELECT cursor FROM pipeline_state WHERE job_name=?').bind(TRIAL_JOB).first();
+  cursor=prev?.cursor||0;if(cursor>=total)cursor=0;
+  for(let i=cursor;i<Math.min(total,cursor+TRIAL_BATCH);i++){
+   if(Date.now()>deadline){state='PARTIAL';break;}
+   const nct=studies[i].nct_id;
+   try{
+    const data=await fetchOfficialTrial(nct,deadline);
+    const write=await db.prepare('UPDATE bio_trials SET public_title=COALESCE(?,public_title),phase=COALESCE(?,phase),status=?,primary_completion_date=?,last_checked_at_utc=? WHERE nct_id=?').bind(data.title,data.phase,data.status,data.primaryCompletion,iso(),nct).run();
+    changed+=write.meta?.changes||0;checked++;
+   }catch(e){
+    failed++;state='PARTIAL';error=(nct+': '+String(e?.name==='AbortError'?'NCT_TIMEOUT':e?.message||e)).slice(0,170);
+    if(failed>=2){cursor=i+1;break;}
+   }
+   cursor=i+1;
+   await db.prepare('UPDATE pipeline_state SET cursor=? WHERE job_name=? AND lock_owner=?').bind(cursor,TRIAL_JOB,id).run();
+  }
+  if(cursor>=total)cursor=0;
+  if(!total)state='EMPTY';
+  else if(failed||state==='PARTIAL')state=checked?'PARTIAL':'FAILED';
+ }catch(e){state='FAILED';error=String(e?.message||e).slice(0,170)}
+ finally{
+  try{
+   await db.prepare('UPDATE pipeline_runs SET finished_at_utc=?,state=?,checked_count=?,changed_count=?,cursor=?,error_code=?,error_summary=? WHERE id=?').bind(iso(),state,checked+failed,changed,cursor,state==='FAILED'?'NCT_INGESTION_FAILED':null,error||null,id).run();
+   await db.prepare("UPDATE pipeline_state SET lock_owner=NULL,lease_expires_at_utc=NULL,cursor=?,last_run_state=?,last_error=?,error_count=CASE WHEN ?='SUCCESS' THEN 0 ELSE error_count+1 END,last_success_at_utc=CASE WHEN ?='SUCCESS' OR (?='PARTIAL' AND ?>0) THEN ? ELSE last_success_at_utc END WHERE job_name=? AND lock_owner=?").bind(cursor,state,error||null,state,state,state,checked,iso(),TRIAL_JOB,id).run();
+  }catch(e){console.error(JSON.stringify({job:TRIAL_JOB,error:'PERSIST_FAILURE',message:String(e).slice(0,150)}))}
+ }
+ console.log(JSON.stringify({job:TRIAL_JOB,source,state,checked,changed,failed,error}));
+ return {state,checked,changed,failed,error};
+}
+
 // Regular-session daily *close*, not last traded/pre-market/after-hours quote.
 // Yahoo's public chart endpoint is undocumented; validation failures preserve existing D1 data.
 export function parseLatestYahooClose(payload,ticker,now=new Date()){
@@ -474,7 +553,8 @@ export default {
   ctx.waitUntil(Promise.allSettled([
    ensureQuarter(env.DB,'CRON').catch(e=>console.error(JSON.stringify({event:'quarter_rollover_error',error:String(e).slice(0,180)}))),
    runRefresh(env,'CRON').catch(e=>console.error(JSON.stringify({event:'sec_cron_error',error:String(e).slice(0,180)}))),
-   runMarketRefresh(env,'CRON').catch(e=>console.error(JSON.stringify({event:'market_cron_error',error:String(e).slice(0,180)})))
+   runMarketRefresh(env,'CRON').catch(e=>console.error(JSON.stringify({event:'market_cron_error',error:String(e).slice(0,180)}))),
+   runTrialRefresh(env,'CRON').catch(e=>console.error(JSON.stringify({event:'trial_cron_error',error:String(e).slice(0,180)})))
   ]));
  }
 };
